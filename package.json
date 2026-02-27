@@ -1,0 +1,32 @@
+{
+  "name": "shareskills",
+  "version": "1.0.0",
+  "description": "A collection of reusable Claude Code skills",
+  "main": "index.js",
+  "bin": {
+    "shareskills": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/xxxcoffee/shareSkills.git"
+  },
+  "keywords": [
+    "claude-code",
+    "skills",
+    "claude",
+    "ai",
+    "tools"
+  ],
+  "author": "xxxcoffee",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/xxxcoffee/shareSkills/issues"
+  },
+  "homepage": "https://github.com/xxxcoffee/shareSkills#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
