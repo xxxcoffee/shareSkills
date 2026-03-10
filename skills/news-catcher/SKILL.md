@@ -1,5 +1,5 @@
 ---
-name: news-cacher
+name: news-catcher
 description: |
   新闻抓取聚合技能，使用主代理+子代理并行模式抓取多个网站新闻。
   当用户需要批量抓取新闻、获取多个网站的最新内容、新闻聚合汇总时使用此技能。
@@ -8,7 +8,7 @@ description: |
 disable-model-invocation: true
 ---
 
-# News Cacher 新闻抓取技能
+# News Catcher 新闻抓取技能
 
 ## 功能概述
 
@@ -86,7 +86,7 @@ disable-model-invocation: true
 
 ---
 
-*由 News Cacher 自动生成*
+*由 News Catcher 自动生成*
 ```
 
 ## 子代理输出格式
