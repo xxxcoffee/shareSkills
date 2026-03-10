@@ -23,6 +23,18 @@ Alibaba Cloud Log Service (SLS) query tool supporting log retrieval, analysis, q
 
 [View Details](./skills/ali-log/)
 
+### xlsx-fix
+
+Excel file repair tool for fixing openpyxl fill tag errors.
+
+**Features:**
+- Fix empty `<fill/>` tags in Excel styles.xml
+- Automatically create backup files
+- Support direct import as Python module
+- Integrates seamlessly with openpyxl workflows
+
+[View Details](./skills/xlsx-fix/)
+
 ## Installation
 
 ### Method 1: Clone and Copy

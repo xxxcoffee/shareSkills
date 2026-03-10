@@ -23,6 +23,18 @@
 
 [查看详情](./skills/ali-log/)
 
+### xlsx-fix
+
+Excel 文件修复工具，用于解决 openpyxl fill 标签错误。
+
+**功能特性：**
+- 修复 Excel styles.xml 中的空 `<fill/>` 标签
+- 自动创建备份文件
+- 支持作为 Python 模块直接导入
+- 与 openpyxl 工作流无缝集成
+
+[查看详情](./skills/xlsx-fix/)
+
 ## 安装方式
 
 ### 方式 1：克隆并复制
