@@ -87,3 +87,13 @@
    URL: https://spectrum.ieee.org/artificial-intelligence
    简介：IEEE人工智能报道
    状态：✓ 可访问
+
+=====================================
+               AI 排名
+=====================================
+
+1. LLM Leaderboard - AI
+   URL: https://artificialanalysis.ai/leaderboards/models
+   简介：模型排名网站
+   需求：从这个网站获取前10名模型
+   状态：✓ 可访问

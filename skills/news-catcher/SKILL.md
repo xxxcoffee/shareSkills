@@ -84,6 +84,11 @@ disable-model-invocation: true
 1.标题 - 摘要总结（50字）
 2.标题2 - 摘要总结（50字）
 
+## LLM Leaderboard 
+
+1.Gemini 3.1 Pro Preview - 57 $4.5
+2.GPT-5.4(xhigh) - 57 $5.63
+
 ---
 
 *由 News Catcher 自动生成*
