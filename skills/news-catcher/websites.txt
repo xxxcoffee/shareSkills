@@ -1,0 +1,99 @@
+# 新闻平台网址收集
+# 分类：科技、战争、AI
+# 更新时间：2026-03-11
+# 检查工具：Playwright MCP
+
+=====================================
+              科 技 类（国内）
+=====================================
+
+1. 36氪
+   URL: https://36kr.com
+   简介：国内领先的科技新媒体，报道创业、科技、互联网
+   状态：✓ 可访问
+
+2. 机器之心（AI+科技）
+    URL: https://www.jiqizhixin.com
+    简介：人工智能领域的专业媒体，也覆盖科技前沿
+    状态：✓ 可访问
+
+=====================================
+              科 技 类（国外）
+=====================================
+
+1. TechCrunch
+   URL: https://techcrunch.com
+   简介：全球知名科技新闻网站，专注初创企业和风险投资
+   状态：✓ 可访问
+
+3. CNET
+   URL: https://www.cnet.com
+   简介：全球领先的科技产品评测与新闻网站
+   状态：✓ 可访问
+
+4. VentureBeat
+   URL: https://venturebeat.com
+   简介：科技新闻、人工智能与游戏报道
+   状态：✓ 可访问
+
+=====================================
+              战 争 类（国际）
+=====================================
+
+1. The War Zone
+   URL: https://www.twz.com
+   简介：军事冲突、防务技术与地缘战略
+   状态：✓ 可访问
+
+2. Military Times
+   URL: https://www.militarytimes.com
+   简介：美军内部新闻与军事政策
+   状态：✓ 可访问
+
+3. BBC News - 军事板块
+    URL: https://www.bbc.com/news/world
+    简介：BBC国际新闻与冲突报道
+    状态：✓ 可访问
+
+=====================================
+               AI 类（国内）
+=====================================
+
+1. 机器之心
+   URL: https://www.jiqizhixin.com
+   简介：国内最大的人工智能媒体与产业服务平台
+   状态：✓ 可访问
+
+2. 量子位
+   URL: https://www.qbitai.com
+   简介：AI与前沿科技新媒体
+   状态：✓ 可访问
+
+=====================================
+               AI 类（国外）
+=====================================
+
+1. MIT Technology Review - AI
+   URL: https://www.technologyreview.com/topic/artificial-intelligence/
+   简介：MIT科技评论AI专题
+   状态：✓ 可访问
+
+2. AI News
+   URL: https://www.artificialintelligence-news.com
+   简介：专注人工智能产业新闻
+   状态：✓ 可访问
+
+3. IEEE Spectrum - AI
+   URL: https://spectrum.ieee.org/artificial-intelligence
+   简介：IEEE人工智能报道
+   状态：✓ 可访问
+
+=====================================
+               AI 排名
+=====================================
+
+1. LLM Leaderboard - AI
+   URL: https://artificialanalysis.ai/leaderboards/models
+   简介：模型排名网站
+   需求：从这个网站获取前10名模型
+   状态：✓ 可访问
