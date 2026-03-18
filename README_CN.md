@@ -35,6 +35,20 @@ Excel 文件修复工具，用于解决 openpyxl fill 标签错误。
 
 [查看详情](./skills/xlsx-fix/)
 
+### e-checker
+
+Excel 配置检查工具，基于 YAML 规则验证 Excel 数据。
+
+**功能特性：**
+- 使用 YAML 规则文件验证 Excel 数据
+- 25+ 内置操作符（验证、查找、转换、集合）
+- 跨表引用验证
+- 基于 Pipeline 的规则组合
+- 支持表达式和变量
+- 详细的错误报告
+
+[查看详情](./skills/e-checker/)
+
 ## 安装方式
 
 ### 方式 1：克隆并复制

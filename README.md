@@ -35,6 +35,20 @@ Excel file repair tool for fixing openpyxl fill tag errors.
 
 [View Details](./skills/xlsx-fix/)
 
+### e-checker
+
+Excel configuration checker for validating Excel data against YAML rule definitions.
+
+**Features:**
+- Validate Excel data using YAML rule files
+- 25+ built-in operators (validation, lookup, transform, collection)
+- Cross-sheet reference validation
+- Pipeline-based rule composition
+- Support for expressions and variables
+- Detailed error reporting
+
+[View Details](./skills/e-checker/)
+
 ## Installation
 
 ### Method 1: Clone and Copy
