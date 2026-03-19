@@ -4,6 +4,7 @@
 """
 
 import re
+from collections import defaultdict
 from typing import Any, Dict, List, Set, Optional
 
 from echecker.operators.base import (
@@ -576,4 +577,88 @@ class PreviousOperator(AggregateOperator):
             success=success,
             errors=errors,
             message="跨行引用验证通过" if success else f"发现 {len(errors)} 个跨行引用错误"
+        )
+
+
+@register_operator
+class NoDuplicateOperator(AggregateOperator):
+    """唯一性验证操作符
+
+    跨行收集值，在 finalize 阶段检查是否有重复。
+    支持每行 Pipeline 输出为单个值或列表（列表时展开收集每个元素）。
+    空值/None 忽略不计。
+
+    示例:
+        - no_duplicate
+    """
+
+    name = "no_duplicate"
+    operator_type = OperatorType.VALIDATE
+    version = "1.0.0"
+    description = "验证跨行值唯一性（无重复）"
+
+    config_spec = {
+        "type": "object",
+        "properties": {
+            "key": {
+                "type": "string",
+                "description": "状态存储键名（用于区分同一会话中多个 no_duplicate 规则）",
+                "default": "default"
+            }
+        }
+    }
+
+    def _get_cache_key(self, config: Dict) -> str:
+        key = config.get("key", "default")
+        return f"_no_duplicate_{key}"
+
+    def collect(self, value: Any, context: PipelineContext, config: Dict) -> OperatorResult:
+        """收集阶段 - 收集当前行的值"""
+        cache_key = self._get_cache_key(config)
+        current: List = context.get_state(cache_key, [])
+
+        items: List[Any]
+        if isinstance(value, list):
+            items = value
+        else:
+            items = [value]
+
+        for item in items:
+            if item is None:
+                continue
+            if isinstance(item, str) and item.strip() == "":
+                continue
+            current.append((context.current_cell, context.current_row, item))
+
+        return OperatorResult(
+            success=True,
+            state_updates={cache_key: current}
+        )
+
+    def finalize(self, context: PipelineContext, config: Dict) -> OperatorResult:
+        """最终验证阶段 - 检查重复值"""
+        cache_key = self._get_cache_key(config)
+        collected: List = context.get_state(cache_key, [])
+
+        # 按 value 分组，找出重复项
+        groups: Dict[Any, List] = defaultdict(list)
+        for cell_ref, row_num, val in collected:
+            groups[val].append((cell_ref, row_num))
+
+        errors: List[Dict] = []
+        for val, entries in groups.items():
+            if len(entries) > 1:
+                rows_str = "、".join(f"第{row}行" for _, row in entries)
+                errors.append({
+                    "cell": entries[0][0],
+                    "message": f"值 {val} 在{rows_str}中重复出现",
+                    "expected": "唯一",
+                    "actual": str(val)
+                })
+
+        success = len(errors) == 0
+        return OperatorResult(
+            success=success,
+            errors=errors,
+            message="唯一性验证通过" if success else f"发现 {len(errors)} 个重复值"
         )

@@ -100,6 +100,7 @@ rules:
 | `round` | Round number | `round: 2` |
 | `floor` | Floor value | `floor` |
 | `ceil` | Ceiling value | `ceil` |
+| `regex_extract` | Regex capture group extraction | `regex_extract: {pattern: "^Item(\\d+)$", group: 1}` |
 
 ### Lookup Operators
 
@@ -125,6 +126,7 @@ rules:
 | `collect` | Collect data across rows | `collect: "key"` |
 | `sequential` | Sequential ID check | `sequential: {prefix: "id", start_from: 1}` |
 | `previous` | Cross-row reference | `previous: {ref_column: "A"}` |
+| `no_duplicate` | Cross-row uniqueness check | `no_duplicate` |
 
 ### Validation Operators
 
@@ -220,6 +222,34 @@ rules:
               prefix: "item"
               start_from: 1
         message: "IDs must be sequential"
+```
+
+### Regex Capture Group Extraction
+
+```yaml
+rules:
+  - target: "data.xlsx:Sheet1.A1:*"
+    id: "check_item_number"
+    validations:
+      - pipeline:
+          - regex_extract:
+              pattern: "^Item(\\d+)$"
+              group: 1
+          - eq: "${@row.B}"
+        message: "Item number does not match column B"
+```
+
+### Cross-Row Uniqueness Validation
+
+```yaml
+rules:
+  - target: "data.xlsx:Sheet1.A1:*"
+    id: "check_unique_id"
+    validations:
+      - pipeline:
+          - collect: "ids"
+          - no_duplicate
+        message: "Duplicate ID found"
 ```
 
 ## Project Structure

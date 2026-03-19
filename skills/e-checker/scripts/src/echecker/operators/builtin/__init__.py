@@ -23,6 +23,7 @@ from echecker.operators.builtin.transform import (
     FlattenOperator,
     CountOperator,
     FilterOperator,
+    RegexExtractOperator,
 )
 
 from echecker.operators.builtin.math import (
@@ -38,6 +39,7 @@ from echecker.operators.builtin.collection import (
     CollectOperator,
     SequentialOperator,
     PreviousOperator,
+    NoDuplicateOperator,
 )
 
 from echecker.operators.builtin.source import (
@@ -78,6 +80,7 @@ def _register_all():
         FlattenOperator,
         CountOperator,
         FilterOperator,
+        RegexExtractOperator,
         # 数学运算操作符
         MathOperator,
         RoundOperator,
@@ -95,6 +98,7 @@ def _register_all():
         CollectOperator,
         SequentialOperator,
         PreviousOperator,
+        NoDuplicateOperator,
         # 验证操作符
         ExistsOperator,
         ExistsInOperator,
@@ -133,6 +137,7 @@ __all__ = [
     "FlattenOperator",
     "CountOperator",
     "FilterOperator",
+    "RegexExtractOperator",
     # 数学运算操作符
     "MathOperator",
     "RoundOperator",
@@ -150,6 +155,7 @@ __all__ = [
     "CollectOperator",
     "SequentialOperator",
     "PreviousOperator",
+    "NoDuplicateOperator",
     # 验证操作符
     "ExistsOperator",
     "ExistsInOperator",

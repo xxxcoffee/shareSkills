@@ -470,3 +470,76 @@ class FilterOperator(PipelineOperator):
             return OperatorResult(success=True, value=result)
 
         return OperatorResult.error(f"未知的过滤类型: {filter_type}")
+
+
+@register_operator
+class RegexExtractOperator(PipelineOperator):
+    """
+    正则捕获组提取操作符
+
+    从字符串中提取正则表达式的捕获组内容。
+    如果输入是列表，对每个元素独立处理，不匹配或 None 元素静默过滤。
+
+    配置：
+        pattern (str): Python 正则表达式（必填）
+        group (int): 捕获组编号，默认 1；0 表示完整匹配
+
+    示例：
+        >>> op = RegexExtractOperator()
+        >>> op.execute("Item5", context, {"pattern": r"^Item(\\d+)$", "group": 1})
+        OperatorResult(success=True, value="5")
+
+        >>> op.execute(["Item5", "Other"], context, {"pattern": r"^Item(\\d+)$", "group": 1})
+        OperatorResult(success=True, value=["5"])
+    """
+
+    name = "regex_extract"
+    operator_type = OperatorType.TRANSFORM
+    version = "1.0.0"
+    description = "从字符串中提取正则捕获组内容"
+    config_spec = {
+        "type": "object",
+        "properties": {
+            "pattern": {
+                "type": "string",
+                "description": "Python 正则表达式",
+            },
+            "group": {
+                "type": "integer",
+                "default": 1,
+                "description": "捕获组编号，0 表示完整匹配",
+            },
+        },
+        "required": ["pattern"],
+    }
+
+    def execute(
+        self, value: Any, context: PipelineContext, config: Dict
+    ) -> OperatorResult:
+        pattern = config.get("pattern", "")
+        group = config.get("group", 1)
+
+        try:
+            regex = re.compile(pattern)
+        except re.error as e:
+            return OperatorResult.error(f"无效的正则表达式: {e}")
+
+        def _extract(val: Any):
+            if val is None:
+                return None
+            if not isinstance(val, str):
+                val = str(val)
+            m = regex.match(val)
+            if m is None:
+                return None
+            try:
+                return m.group(group)
+            except IndexError:
+                return None
+
+        if isinstance(value, list):
+            result = [_extract(item) for item in value]
+            result = [r for r in result if r is not None]
+            return OperatorResult(success=True, value=result)
+
+        return OperatorResult(success=True, value=_extract(value))

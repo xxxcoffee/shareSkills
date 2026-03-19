@@ -101,6 +101,7 @@ rules:
 | `round` | `2` | 四舍五入 |
 | `floor` | - | 向下取整 |
 | `ceil` | - | 向上取整 |
+| `regex_extract` | `{pattern: "^Item(\\d+)$", group: 1}` | 正则捕获组提取 |
 
 ### LOOKUP 类型 - 数据查找
 
@@ -126,6 +127,7 @@ rules:
 | `collect` | `"key"` | 收集数据（跨行） |
 | `sequential` | `{prefix: "id", start_from: 1}` | 顺序验证 |
 | `previous` | `{ref_column: "A"}` | 跨行引用验证 |
+| `no_duplicate` | `{key: "default"}` | 跨行唯一性验证 |
 
 ### VALIDATE 类型 - 验证操作
 
@@ -236,6 +238,34 @@ rules:
               prefix: "item"
               start_from: 1
         message: "ID必须按顺序累加"
+```
+
+### 6. 正则捕获组提取验证
+
+```yaml
+rules:
+  - target: "data.xlsx:Sheet1.A1:*"
+    id: "check_item_number"
+    validations:
+      - pipeline:
+          - regex_extract:
+              pattern: "^Item(\\d+)$"
+              group: 1
+          - eq: "${@row.B}"
+        message: "Item编号与B列值不匹配"
+```
+
+### 7. 跨行唯一性验证
+
+```yaml
+rules:
+  - target: "data.xlsx:Sheet1.A1:*"
+    id: "check_unique_id"
+    validations:
+      - pipeline:
+          - collect: "ids"
+          - no_duplicate
+        message: "ID存在重复"
 ```
 
 ## 重要约束
