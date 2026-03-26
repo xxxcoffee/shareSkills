@@ -6,7 +6,7 @@ description: |
 
 # e-checker Excel配置检查工具
 
-基于YAML规则文件的Excel配置检查器，采用V3 Pipeline操作符架构。
+基于YAML规则文件的Excel配置检查器，采用V3 Pipeline原子化操作符架构。
 
 ## 核心功能
 
@@ -71,47 +71,76 @@ rules:
 
 # 带括号的工作表名
 - target: "reference.xlsx:Product(Data).A5:*"
+
+# 文件夹通配符
+- target: "data/*.xlsx:Sheet1.A1:*"
+
+# 递归匹配子文件夹
+- target: "configs/**/*.xlsx:*.A1:*"
 ```
 
+### 动态范围支持
+
+使用 `*` 作为结束标记，自动检测数据末尾：
+
+```yaml
+rules:
+  # 从A5开始，自动找到最后一个非空行
+  - target: "file.xlsx:Sheet1.A5:*"
+    id: "validate_all"
+    validations:
+      - pipeline:
+          - eq: 1
+```
+
+检测逻辑：从起始行向下扫描，遇到连续3个空行后停止。
+
 ## 操作符列表
+
+### 操作符类型说明
+
+| 类型 | 说明 |
+|------|------|
+| SOURCE | 数据源操作符，获取初始数据 |
+| TRANSFORM | 转换操作符，对数据进行变换处理 |
+| LOOKUP | 查找操作符，跨表/跨文件查询数据 |
+| COLLECTION | 集合操作符，处理集合运算 |
+| AGGREGATE | 聚合操作符，跨行/跨表聚合数据 |
+| VALIDATE | 验证操作符，执行最终验证 |
 
 ### SOURCE 类型 - 数据源
 
 | 操作符 | 配置 | 说明 |
 |--------|------|------|
-| `source` | `{column: "H"}` | 从指定列获取源值 |
+| `source` | `{column: "H"}` 或 `"@row.H"` | 从指定列获取源值 |
 | `as` | `{name: "var_name"}` 或 `"var_name"` | 保存当前结果到变量 |
+| `use` | `"@var_name"` | 使用之前保存的变量 |
 
 ### TRANSFORM 类型 - 数据转换
 
 | 操作符 | 配置 | 说明 |
 |--------|------|------|
 | `split` | `{delimiter: "\|"}` 或 `"\|"` | 按分隔符分割字符串。输入为列表时，对每个元素分割后扁平化 |
-| `extract` | `{delimiter: ":", index: 0}` | 提取复合值的部分。输入为列表时，对每个元素提取 |
+| `extract` | `{index: 0}` 或 `0` | 提取列表指定索引元素 |
 | `filter` | `{type: "regex", pattern: "^[A-Z]"}` | 过滤数组元素，支持 `regex`/`prefix`/`suffix` |
-| `map` | `{operation: "strip"}` | 列表映射操作，支持 `strip`/`lower`/`upper`/`int`/`float`/`str` |
+| `map` | `{operation: "strip"}` 或子pipeline列表 | 列表映射操作，支持 `strip`/`lower`/`upper`/`int`/`float`/`str`，或自定义子pipeline |
 | `flatten` | - | 扁平化嵌套列表 |
-| `count` | `{delimiter: "\|"}` | 计算元素个数。字符串按分隔符分割后计数，列表直接返回长度 |
+| `count` | - | 计算元素个数。字符串按分隔符分割后计数，列表直接返回长度 |
 | `unique` | - | 去重，保持原有顺序 |
 | `math` | `{op: "add", value: 1}` | 数学运算，支持 `add`/`sub`/`mul`/`div`，value 支持变量引用 |
-| `round` | `{decimals: 2}` | 四舍五入到指定小数位，默认 0 位（整数） |
+| `round` | `{decimals: 2}` 或 `2` | 四舍五入到指定小数位，默认 0 位（整数） |
 | `floor` | - | 向下取整 |
 | `ceil` | - | 向上取整 |
-| `regex_extract` | `{pattern: "^Item(\\d+)$", group: 1}` | 正则捕获组提取。`group: 0` 表示完整匹配，默认 1。输入为列表时，对每个元素处理，不匹配的元素会被过滤 |
-
-**注意**：以下操作符目前**尚未实现**：`slice`、`trim`、`to_number`
+| `regex_extract` | `{pattern: "^Item(\d+)$", group: 1}` | 正则捕获组提取。`group: 0` 表示完整匹配，默认 1。输入为列表时，对每个元素处理，不匹配的元素会被过滤 |
 
 ### LOOKUP 类型 - 数据查找
 
 | 操作符 | 配置 | 说明 |
 |--------|------|------|
-| `lookup` | `{ref_source: "ref", column: "id"}` | 跨表查找 |
+| `lookup` | `"ref[id].column"` | 跨表查找，从refs定义的数据源中查找值 |
 | `where` | `{ref_source: "ref", match_column: "id", conditions: [...]}` | 条件过滤查找 |
 | `get` | `{column: "field"}` | 获取记录属性 |
-| `sheet_exists` | `{sheet_pattern: "Sheet({value})"}` | Sheet存在验证（详见下方详细说明） |
-| `row_count` | `{sheet: "Sheet1", skip_rows: 4}` | 获取Sheet行数（待实现） |
-
-**注意**：`row_count` 操作符目前**尚未实现**
+| `sheet_exists` | `{sheet_pattern: "Sheet({value})"}` | Sheet存在验证 |
 
 #### `sheet_exists` 详细说明
 
@@ -162,10 +191,6 @@ rules:
     split_by: "|"
 ```
 
-**错误输出**：验证失败时返回错误信息，包含：
-- `sheet_name`: 查找的Sheet名称
-- `searched_files`: 搜索过的文件列表
-
 ### COLLECTION 类型 - 集合操作
 
 | 操作符 | 配置 | 说明 |
@@ -187,12 +212,16 @@ rules:
 | 操作符 | 配置 | 说明 |
 |--------|------|------|
 | `match_structure` | `{type: "regex", pattern: "^[A-Z]", mode: "each"}` | 结构验证。`mode`: `each`（验证每个元素）或 `single`（整体验证）。支持 `regex`/`prefix`/`suffix` |
-| `exists_in` | `"ref.id"` | 存在性验证（待实现） |
-| `eq` | `{value: "@row.D"}` 或数值 | 等于验证（待实现） |
-| `in` | `{values: ["a", "b", "c"]}` | 包含验证（待实现） |
-| `range_check` | `{min: 0, max: 100}` | 范围检查（待实现） |
-
-**注意**：以下操作符目前**尚未实现**：`exists`、`all_exist_in`、`validate`、`regex_match`、`lt`、`lte`、`gt`、`gte`、`ne`、`all`、`same`
+| `exists_in` | `"ref.id"` | 存在性验证，验证值是否存在于引用表的指定列中 |
+| `eq` | `"@row.D"` 或数值/字符串 | 等于验证 |
+| `lt` | `10` 或 `"@row.D"` | 小于验证 |
+| `lte` | `10` 或 `"@row.D"` | 小于等于验证 |
+| `gt` | `0` 或 `"@row.D"` | 大于验证 |
+| `gte` | `0` 或 `"@row.D"` | 大于等于验证 |
+| `ne` | `0` 或 `"@row.D"` | 不等于验证 |
+| `all` | `[{lt: 10}]` | 全满足验证，验证列表所有元素都满足指定条件 |
+| `same` | `"@row.I"` | 真假性一致验证，验证当前值与目标值的真假性（是否为空）相同 |
+| `in` | `{values: ["a", "b", "c"]}` 或 `"@list"` | 包含验证，验证值是否在指定列表中 |
 
 ## 变量引用语法
 
@@ -204,12 +233,31 @@ rules:
 
 ## 表达式语法
 
-支持 `${...}` 模板语法：
+支持 `${...}` 模板语法，可在规则配置中直接使用数学运算、函数调用和变量引用：
+
+| 语法 | 说明 | 示例 |
+|------|------|------|
+| 数学运算 | `+`, `-`, `*`, `/`, `%`, `**` | `${@row.A + @row.B * 2}` |
+| 比较运算 | `==`, `!=`, `<`, `>`, `<=`, `>=` | `${@value >= 100}` |
+| 函数调用 | `len()`, `abs()`, `max()`, `min()`, `sum()` | `${max(@row.A, 100)}` |
+| 模板字符串 | 字符串插值 | `"ID_${@row.A + 1}"` |
+
+**使用示例**：
 
 ```yaml
-- eq: "${@row.A + @row.B * 2}"  # 数学运算
-- eq: "${len(@var)}"             # 函数调用
-- eq: "${max(@row.A, @row.B, 100)}"  # 多参数函数
+rules:
+  - target: "data.xlsx:Sheet1.A1:*"
+    validations:
+      # 数学表达式验证
+      - eq: "${@row.Price * 1.1 + 5}"
+
+      # 函数调用
+      - validate: "${len(@value) > 0}"
+
+      # 模板字符串动态查找
+      - lookup:
+          from: "ref.xlsx:Sheet2"
+          where: "ID_${@row.B + 1}"
 ```
 
 ## 常见验证场景示例
@@ -234,7 +282,7 @@ rules:
         message: "格式不正确"
 ```
 
-### 2. 跨表引用验证
+### 2. 跨表引用存在性验证
 
 ```yaml
 rules:
@@ -242,6 +290,7 @@ rules:
     id: "check_exists"
     validations:
       - pipeline:
+          - split: "|"
           - exists_in: "ref_data.id"
         message: "ID不存在于引用表"
 ```
@@ -257,10 +306,8 @@ rules:
           - match_structure:
               type: "regex"
               pattern: "^[0-9]+$"
-          # 或使用 range_check（待实现）
-          # - range_check:
-          #     min: 0
-          #     max: 100
+          - gte: 0
+          - lte: 100
         message: "数值必须在0-100之间"
 ```
 
@@ -273,10 +320,10 @@ rules:
     validations:
       - pipeline:
           - split: "|"
-          - count:
-              delimiter: "|"
-          # 与期望值比较需要 eq 操作符实现
-        message: "数组长度不匹配"
+          - count
+          - gte: 1
+          - lte: 10
+        message: "数组长度必须在1-10之间"
 ```
 
 ### 5. 顺序ID验证
@@ -304,9 +351,9 @@ rules:
     validations:
       - pipeline:
           - regex_extract:
-              pattern: "^Item(\\d+)$"
+              pattern: "^Item(\d+)$"
               group: 1
-          # 与B列比较需要 eq 操作符实现
+          - eq: "${@row.B}"
         message: "Item编号与B列值不匹配"
 ```
 
@@ -342,7 +389,25 @@ rules:
         message: "并集验证失败"
 ```
 
-### 9. Sheet存在性验证
+### 9. 集合交集验证
+
+```yaml
+rules:
+  - target: "data.xlsx:Sheet1.A1:*"
+    id: "check_intersect"
+    validations:
+      - pipeline:
+          - split: "|"
+          - as: "list_a"
+          - source: "@row.B"
+          - split: "|"
+          - as: "list_b"
+          - intersect:
+              sources: ["@list_a", "@list_b"]
+        message: "交集验证失败"
+```
+
+### 10. Sheet存在性验证
 
 ```yaml
 rules:
@@ -358,6 +423,176 @@ rules:
               case_sensitive: false
               split_by: "|"
         message: "对应Sheet不存在"
+```
+
+### 11. 复杂嵌套结构验证
+
+验证`bigCoinGuarantee`列的值`"101:2,4|102:2,5|103:2,6"`中，每个范围的上下限都小于`bNum`列的值：
+
+```yaml
+rules:
+  - target: "file.xlsx:PassNewABCD.F5:*"
+    id: "big_coin_guarantee_range_check"
+    description: "bigCoinGuarantee中每个范围的上下限必须小于bNum"
+    validations:
+      - pipeline:
+          # 步骤1: 拆分为项目列表
+          - split: "|"                      # ["101:2,4", "102:2,5", ...]
+
+          # 步骤2: 对每个项目提取范围部分
+          - map:
+              - split: ":"                 # → [["101","2,4"], ["102","2,5"], ...]
+              - extract: 1                  # → ["2,4", "2,5", ...]
+              - split: ","                  # → [["2","4"], ["2","5"], ...]
+
+          # 步骤3: 扁平化
+          - flatten                         # ["2","4","2","5", ...]
+
+          # 步骤4: 转数字
+          - to_number                       # [2, 4, 2, 5, ...]
+
+          # 步骤5: 验证所有值 < bNum
+          - all:
+              - lt: "@row.D"                # 都小于 D列(bNum)
+```
+
+### 12. 派生集合一致性验证
+
+验证recoverySeries等于First、Forth和RebuyChest元素的series并集：
+
+```yaml
+version: "3.0"
+
+refs:
+  element_pass_new:
+    file: "elementPassNew.xlsx"
+    sheet: "element(PassNew)"
+    columns:
+      id: "A"
+      series: "E"
+      level: "F"
+
+  element_chest:
+    file: "elementPassNew.xlsx"
+    sheet: "element(Chest)"
+    columns:
+      id: "A"
+      series: "E"
+
+rules:
+  - target: "file.xlsx:PassNewList.G5:*"
+    id: "recovery_series_consistency"
+    description: "recoveryElementSeries必须是First、Forth和RebuyChest元素的series并集"
+    validations:
+      - pipeline:
+          # 收集H列的series
+          - source: "@row.H"
+          - split: "|"
+          - map:
+              - lookup: "element_pass_new[id].series"
+          - as: "series_h"
+
+          # 收集I列的series
+          - source: "@row.I"
+          - split: "|"
+          - map:
+              - lookup: "element_pass_new[id].series"
+          - as: "series_i"
+
+          # 收集L列的series（复合值提取）
+          - source: "@row.L"
+          - split: "|"
+          - map:
+              - split: ":"
+              - extract: 0
+              - lookup: "element_chest[id].series"
+          - as: "series_l"
+
+          # 计算并集
+          - union: ["@series_h", "@series_i", "@series_l"]
+          - unique
+          - as: "expected"
+
+          # 获取实际值
+          - source: "@value"
+          - split: "|"
+          - as: "actual"
+
+          # 比较
+          - use: "@expected"
+          - eq: "@actual"
+```
+
+### 13. 跨行引用校验
+
+验证previousPassId等于上一行的id：
+
+```yaml
+version: "3.0"
+
+rules:
+  - target: "file.xlsx:PassNewList.K5:*"
+    id: "previous_pass_id_check"
+    validations:
+      - pipeline:
+          - previous:
+              ref_column: "A"
+              row_offset: 1
+              allow_empty_first: true
+```
+
+### 14. 使用表达式语法
+
+使用 `${...}` 表达式语法简化规则：
+
+```yaml
+version: "3.0"
+
+rules:
+  # 验证数组长度等于指定值+1
+  - target: "file.xlsx:Sheet1.J5:*"
+    id: "arr_length_check"
+    validations:
+      - pipeline:
+          - source: "@row.J"
+          - split: "|"
+          - count
+          - as: "len_j"
+          # 使用表达式：len_j 应该等于 len_h + 1
+          - source: "@row.H"
+          - split: "|"
+          - count
+          - as: "len_h"
+          - use: "@len_j"
+          - eq: "${@len_h + 1}"
+
+  # 数学运算验证
+  - target: "file.xlsx:Sheet1.E5:*"
+    id: "price_calculation"
+    validations:
+      - pipeline:
+          # 验证：Price * 1.1 + 5 >= MinPrice
+          - validate: "${@row.Price * 1.1 + 5 >= @row.MinPrice}"
+```
+
+### 15. 文件夹批量验证
+
+```yaml
+# 验证 data 文件夹下所有 xlsx 文件的 Sheet1
+rules:
+  - target: "data/*.xlsx:Sheet1.A1:*"
+    validations:
+      - pipeline:
+          - exists: true
+    message: "ID不能为空"
+
+# 递归验证所有子文件夹
+rules:
+  - target: "configs/**/*.xlsx:*.A1:*"
+    validations:
+      - pipeline:
+          - regex_match: "^\d+$"
+    message: "必须是数字"
 ```
 
 ## 重要约束
@@ -379,16 +614,6 @@ rules:
 2. **修改数据源** - 在Excel中添加辅助列简化验证逻辑
 3. **拆分验证规则** - 将复杂验证拆分为多个简单规则
 
-### 未实现操作符清单
-
-以下操作符在文档中有定义但**尚未实现**，使用时将不生效：
-
-**TRANSFORM 类型**：`slice`、`trim`、`to_number`
-
-**LOOKUP 类型**：`row_count`
-
-**VALIDATE 类型**：`exists`、`exists_in`、`eq`、`in`、`all_exist_in`、`validate`、`regex_match`、`lt`、`lte`、`gt`、`gte`、`ne`、`all`、`same`、`range_check`
-
 ## 使用步骤
 
 ### 检查配置流程
@@ -401,7 +626,7 @@ rules:
 ### 更新规则流程
 
 1. 理解用户的验证需求
-2. 判断需求是否可通过现有操作符实现（注意检查操作符实现状态）
+2. 判断需求是否可通过现有操作符实现
 3. 如无法实现，列出原因并说明约束
 4. 如可实现，编写或修改YAML规则文件
 5. 验证规则语法正确性

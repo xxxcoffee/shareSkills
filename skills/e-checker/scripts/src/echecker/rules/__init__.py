@@ -12,6 +12,10 @@ from echecker.rules.v3_parser import (
     PipelineStep,
     is_v3_rules,
 )
+from echecker.rules.folder_expander import (
+    FolderExpander,
+    ExpandedTarget,
+)
 
 __all__ = [
     "V3RuleParser",
@@ -21,4 +25,6 @@ __all__ = [
     "PipelineValidation",
     "PipelineStep",
     "is_v3_rules",
+    "FolderExpander",
+    "ExpandedTarget",
 ]

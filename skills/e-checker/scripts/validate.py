@@ -96,8 +96,8 @@ def parse_target(target: str) -> Tuple[str, str]:
     """解析 target 为 (file, sheet_range)
 
     支持格式:
-    - "data.xlsx:Sheet1.A1:*" -> ("data.xlsx", "Sheet1.A1:*")
-    - "data:Sheet1.A1:*" -> ("data.xlsx", "Sheet1.A1:*")
+    - "passNew.xlsx:PassNewList.H5:*" -> ("passNew.xlsx", "PassNewList.H5:*")
+    - "passNew:PassNewList.H5:*" -> ("passNew.xlsx", "PassNewList.H5:*")
 
     旧格式(无文件前缀)给出清晰错误提示
 
@@ -113,12 +113,12 @@ def parse_target(target: str) -> Tuple[str, str]:
     if ":" not in target:
         raise ValueError(
             f"target格式错误，应为 'file.xlsx:Sheet.range': {target}\n"
-            f"提示: 旧格式需要添加文件前缀，例如 'data.xlsx:{target}'"
+            f"提示: 旧格式需要添加文件前缀，例如 'passNew.xlsx:{target}'"
         )
 
     file_part, sheet_range = target.split(":", 1)
 
-    # 检测旧格式：file_part 看起来像 Sheet.Column 格式（例如 Sheet1.A1）
+    # 检测旧格式：file_part 看起来像 Sheet.Column 格式（例如 PassNewList.H5）
     # 旧格式特征：包含点号，且点号后是大写字母+数字
     import re
     if re.match(r'^[A-Za-z_][A-Za-z0-9_]*\.[A-Z]\d', file_part):
@@ -404,8 +404,8 @@ Target格式:
     "file:Sheet.range"        # 简写格式，自动补全.xlsx
 
   示例:
-    - "data.xlsx:Sheet1.A1:*"  # 验证data.xlsx的Sheet1表A1列
-    - "reference.xlsx:Product(Data).A1:*"  # 验证外部数据源
+    - "passNew.xlsx:PassNewList.H5:*"  # 验证passNew.xlsx的PassNewList表H5列
+    - "elementPassNew.xlsx:element(PassNew).A5:*"  # 验证外部数据源
 
 常用Pipeline组合:
   # 简单条件验证
@@ -425,7 +425,7 @@ Target格式:
   # 顺序ID验证
   - collect: "ids"
   - sequential:
-      prefix: "item"
+      prefix: "eventpass"
       start_from: 1
         """
     )
@@ -448,16 +448,9 @@ Target格式:
         help="列出所有可用的Pipeline操作符"
     )
 
-    # 保留 --list-plugins 作为别名，以便向后兼容
-    parser.add_argument(
-        "--list-plugins",
-        action="store_true",
-        help=argparse.SUPPRESS  # 隐藏但保留兼容性
-    )
-
     args = parser.parse_args()
 
-    if args.list_operators or args.list_plugins:
+    if args.list_operators:
         list_operators()
         return 0
 

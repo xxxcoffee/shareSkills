@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Union, Optional
 from dataclasses import dataclass, field
 
 from echecker.expression.template import ConfigPreprocessor, is_template
+from .folder_expander import FolderExpander
 
 @dataclass
 class ExternalDataSourceConfig:
@@ -368,10 +369,14 @@ class V3RuleParser:
             rule = self._parse_rule(rule_data)
             rules.append(rule)
 
+        # 展开通配符
+        expander = FolderExpander(str(base_path))
+        expanded_rules = expander.expand(rules)
+
         self._ruleset = V3RuleSet(
             version=version,
             refs=refs,
-            rules=rules
+            rules=expanded_rules
         )
 
         # 验证所有规则中的refs引用

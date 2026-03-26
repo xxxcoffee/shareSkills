@@ -8,13 +8,15 @@
 - **规则解析**: 将 YAML 规则文件解析为内部数据结构
 - **Pipeline 配置**: 解析 Pipeline 操作符链
 - **外部引用**: 管理跨文件数据引用（refs）配置
+- **文件夹通配符展开**: 支持批量验证文件夹中的 Excel 文件
 
 ## 项目结构
 
 ```
 rules/
-├── __init__.py      # 模块导出（V3组件）
-└── v3_parser.py     # V3 规则解析器
+├── __init__.py          # 模块导出（V3组件）
+├── v3_parser.py         # V3 规则解析器
+└── folder_expander.py   # 文件夹通配符展开器
 ```
 
 ## V3 规则系统
@@ -64,12 +66,13 @@ ruleset = parser.parse_file("v3_rules.yaml")  # 返回 V3RuleSet
 ### Target 格式规范
 
 ```
-格式: <工作表>.<范围>
+格式: <文件>:<工作表>.<范围>
 示例:
-  - "Sheet1.A1"           # 单个单元格
-  - "Sheet1.A1:C10"       # 连续范围
-  - "PassNewList.H5:H100" # 特定工作表
-  - "PassNewList.A5:*"    # 动态范围（从A5到数据末尾）
+  - "file.xlsx:Sheet1.A1"           # 单个单元格
+  - "file.xlsx:Sheet1.A1:C10"       # 连续范围
+  - "file.xlsx:PassNewList.H5:H100" # 特定工作表
+  - "file.xlsx:PassNewList.A5:*"    # 动态范围（从A5到数据末尾）
+  - "data/*.xlsx:Sheet1.A1:*"       # 文件夹通配符
 ```
 
 #### 动态范围支持
@@ -78,7 +81,135 @@ ruleset = parser.parse_file("v3_rules.yaml")  # 返回 V3RuleSet
 
 动态范围检测逻辑：从起始行向下扫描，遇到连续3个空行后停止。
 
-## Pipeline 操作符列表
+### 文件夹通配符支持（新增）
+
+target 支持使用通配符批量匹配文件夹中的 Excel 文件：
+
+| 类型 | 格式 | 示例 | 说明 |
+|------|------|------|------|
+| 文件通配 | `folder/*.xlsx:Sheet.range` | `data/*.xlsx:Sheet1.A1:*` | 匹配文件夹下所有xlsx |
+| 递归通配 | `folder/**/*.xlsx:Sheet.range` | `data/**/*.xlsx:*.A1:*` | 递归匹配子文件夹 |
+| Sheet通配 | `file:*.range` | `data.xlsx:*.A1:*` | 匹配所有Sheet |
+| 组合通配 | `folder/**/*.xlsx:*.range` | `data/**/*.xlsx:*.A1:*` | 文件和Sheet都通配 |
+
+## 文件夹通配符展开器 (folder_expander.py)
+
+`FolderExpander` 支持使用通配符批量匹配文件夹中的 Excel 文件，并为每个匹配的文件+Sheet组合创建独立的规则副本。
+
+### 使用方式
+
+```python
+from echecker.rules.folder_expander import FolderExpander
+from echecker.rules.v3_parser import V3RuleParser
+
+# 解析规则文件
+parser = V3RuleParser()
+ruleset = parser.parse_file("rules.yaml")
+
+# 展开通配符规则
+expander = FolderExpander(base_path=".")
+expanded_rules = expander.expand(ruleset.rules)
+
+# expanded_rules 包含所有展开后的具体规则
+for rule in expanded_rules:
+    print(f"Target: {rule.target}")
+```
+
+### API 参考
+
+#### FolderExpander 类
+
+```python
+class FolderExpander:
+    def __init__(self, base_path: Optional[str] = None):
+        """初始化展开器
+
+        Args:
+            base_path: 基础路径，默认为当前目录
+        """
+
+    def is_wildcard_target(self, target: str) -> bool:
+        """判断 target 是否包含通配符
+
+        检测文件路径中的 `*`、`?`、`**` 以及 Sheet 名称中的通配符。
+        """
+
+    def expand(self, rules: List[V3Rule]) -> List[V3Rule]:
+        """展开所有包含通配符的规则
+
+        为每个匹配的文件+Sheet组合创建新的 V3Rule，
+        保持原有规则的所有字段（validations, description, enabled等）。
+
+        Returns:
+            展开后的规则列表（不包含通配符的具体规则）
+        """
+
+    def expand_target_string(self, target: str) -> List[str]:
+        """展开 target 字符串为具体的目标字符串列表
+
+        便捷方法，用于直接展开 target 而不需要完整的规则对象。
+        """
+```
+
+#### ExpandedTarget 数据类
+
+```python
+@dataclass
+class ExpandedTarget:
+    file_path: str       # 展开后的文件路径
+    sheet_name: str      # 展开后的 Sheet 名称
+    range_str: str       # 范围字符串（保持不变）
+    original_target: str # 原始通配符 target
+```
+
+### 展开行为说明
+
+1. **规则复制模式**：
+   - 通配符展开发生在规则解析阶段
+   - 每个匹配的文件和 Sheet 组合生成独立的验证任务
+   - 所有副本共享相同的 pipeline 和验证逻辑
+   - 为新规则生成唯一的 ID（原ID添加后缀）
+
+2. **文件匹配**：
+   - 使用 `pathlib.Path.glob()` 进行非递归匹配
+   - 使用 `pathlib.Path.rglob()` 进行递归匹配
+   - 支持 `*`（匹配任意字符）和 `?`（匹配单个字符）
+
+3. **Sheet 匹配**：
+   - 使用 `openpyxl` 读取 Excel 文件获取所有 Sheet 名称
+   - 使用 `fnmatch` 进行 Sheet 名称模式匹配
+
+## 文件夹批量验证
+
+当 target 使用通配符时，系统会为每个匹配的文件+Sheet组合创建独立的规则副本，验证逻辑保持一致。
+
+**规则复制模式：**
+- 通配符展开发生在规则解析阶段
+- 每个匹配的文件和Sheet组合生成独立的验证任务
+- 所有副本共享相同的 pipeline 和验证逻辑
+- 验证报告会汇总所有匹配项的结果
+
+**使用示例：**
+
+```yaml
+# 示例1：验证 data 文件夹下所有 xlsx 文件的 Sheet1 表
+rules:
+  - target: "data/*.xlsx:Sheet1.A1:*"
+    validate:
+      - exists: true
+
+# 示例2：递归验证所有子文件夹中的文件
+rules:
+  - target: "data/**/*.xlsx:*.A1:*"
+    validate:
+      - regex_match: "^\\d+$"
+
+# 示例3：验证所有 Sheet 的 A 列
+rules:
+  - target: "config.xlsx:*.A1:*"
+    validate:
+      - exists: true
+```
 
 ### 数据源操作符
 
@@ -140,8 +271,11 @@ ruleset = parser.parse_file("v3_rules.yaml")  # 返回 V3RuleSet
 | 用途 | 路径 |
 |------|------|
 | V3 解析器 | `rules/v3_parser.py` |
+| 文件夹展开器 | `rules/folder_expander.py` |
 
 ## 依赖项
 
 - `pyyaml`: YAML 文件解析
 - `dataclasses`: 数据结构定义（Python 3.7+）
+- `openpyxl`: Excel 文件读取（用于 Sheet 名称匹配）
+- `fnmatch`: Unix shell 风格通配符匹配
