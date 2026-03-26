@@ -1,18 +1,18 @@
-"""插件执行上下文"""
+"""行执行上下文"""
 
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from echecker.plugins.external_data import ExternalDataManager
+    from echecker.excel.external_data import ExternalDataManager
 
 
 @dataclass
-class PluginContext:
-    """插件执行上下文
+class RowContext:
+    """行执行上下文
 
-    提供插件执行时所需的所有上下文信息，包括：
+    提供操作符执行时所需的所有上下文信息，包括：
     - 基础位置信息（文件、工作表、单元格）
     - 行数据访问（支持@row.X语法）
     - 外部数据访问（跨文件引用）
@@ -37,7 +37,7 @@ class PluginContext:
     # 内部数据（通过属性访问）
     _row_data: Dict[str, Any] = field(default_factory=dict)  # 整行数据缓存
     _external_data: Optional["ExternalDataManager"] = field(default=None)  # 外部数据管理器
-    _cache: Dict[str, Any] = field(default_factory=dict)  # 插件共享缓存
+    _cache: Dict[str, Any] = field(default_factory=dict)  # 共享缓存
 
     def get_row_value(self, column: str) -> Any:
         """获取同行其他列的值

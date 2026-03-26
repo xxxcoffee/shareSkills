@@ -68,8 +68,8 @@ ruleset = parser.parse_file("v3_rules.yaml")  # 返回 V3RuleSet
 示例:
   - "Sheet1.A1"           # 单个单元格
   - "Sheet1.A1:C10"       # 连续范围
-  - "Sheet1.H5:H100" # 特定工作表
-  - "Sheet1.A5:*"    # 动态范围（从A5到数据末尾）
+  - "PassNewList.H5:H100" # 特定工作表
+  - "PassNewList.A5:*"    # 动态范围（从A5到数据末尾）
 ```
 
 #### 动态范围支持

@@ -90,6 +90,7 @@ operators/
 | `collect` | `"key"` | 收集所有值（跨行验证） |
 | `sequential` | `{prefix: "id", start_from: 1}` | 验证顺序累加 |
 | `previous` | `{ref_column: "A", row_offset: 1}` | 验证等于上一行 |
+| `no_duplicate` | `true` | 跨行唯一性验证，收集所有行的值并验证无重复 |
 
 ### 验证操作符
 | 操作符 | 配置 | 说明 |

@@ -7,6 +7,7 @@
 - **Excel 文件读取**：通过 `ExcelProvider` 类读取单元格、行列和范围数据
 - **单元格引用解析**：`CellRef` 和 `CellRange` 类支持 Excel 风格的单元格地址解析
 - **错误标注**：`ExcelAnnotator` 类可在原始 Excel 文件中标注验证错误
+- **外部数据管理**：`ExternalDataManager` 管理跨文件 Excel 数据引用（V3 引擎使用）
 
 ## 核心类
 
@@ -100,7 +101,7 @@ Excel 错误标注器，在原始文件中高亮错误单元格。
 
 ```yaml
 rules:
-  - target: "Sheet1.A5:*"  # 从A5开始，自动找到最后一个非空行
+  - target: "PassNewList.A5:*"  # 从A5开始，自动找到最后一个非空行
 ```
 
 动态范围检测逻辑：

@@ -44,9 +44,9 @@ rules:
 
 示例：
 ```yaml
-- target: "data.xlsx:Sheet1.A1:*"      # 验证 data.xlsx 的 Sheet1 表 A1 列
-- target: "data:Sheet2.B2:*"           # 简写，自动补全为 data.xlsx
-- target: "reference.xlsx:Product(Data).A1:*"  # 带括号的 Sheet 名
+- target: "passNew.xlsx:PassNewList.H5:*"      # 验证 passNew.xlsx 的 PassNewList 表 H5 列
+- target: "passNew:PassNewABCD.A5:*"           # 简写，自动补全为 passNew.xlsx
+- target: "elementPassNew.xlsx:element(PassNew).A5:*"  # 带括号的 Sheet 名
 ```
 
 ### 多文件验证
@@ -55,9 +55,9 @@ rules:
 
 ```yaml
 rules:
-  - target: "data.xlsx:Sheet1.A1:*"
+  - target: "passNew.xlsx:PassNewList.A5:*"
     # ... 验证规则
-  - target: "reference.xlsx:Product(Data).A1:*"
+  - target: "elementPassNew.xlsx:element(PassNew).A5:*"
     # ... 验证规则
 ```
 
@@ -94,6 +94,7 @@ rules:
 | `collect` | AGGREGATE | 收集数据 |
 | `sequential` | AGGREGATE | 顺序验证 |
 | `previous` | AGGREGATE | 跨行引用 |
+| `no_duplicate` | AGGREGATE | 跨行唯一性验证，收集所有行的值并验证无重复 |
 | `eq` | VALIDATE | 等于验证 |
 | `lt` | VALIDATE | 小于验证 |
 | `lte` | VALIDATE | 小于等于验证 |
@@ -126,6 +127,8 @@ V3 Pipeline 架构的核心原则是**通过原子操作符的组合实现复杂
 | 操作符注册 | `operators/registry.py` |
 | 单元格引用 | `excel/cell_ref.py` |
 | 表达式解析 | `expression/parser.py` |
+| 行执行上下文 | `core/context.py` |
+| 外部数据管理 | `excel/external_data.py` |
 
 ## 测试
 

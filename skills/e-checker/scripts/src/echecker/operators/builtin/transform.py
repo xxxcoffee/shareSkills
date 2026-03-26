@@ -486,10 +486,10 @@ class RegexExtractOperator(PipelineOperator):
 
     示例：
         >>> op = RegexExtractOperator()
-        >>> op.execute("Item5", context, {"pattern": r"^Item(\\d+)$", "group": 1})
+        >>> op.execute("TileProp5", context, {"pattern": r"^TileProp(\\d+)$", "group": 1})
         OperatorResult(success=True, value="5")
 
-        >>> op.execute(["Item5", "Other"], context, {"pattern": r"^Item(\\d+)$", "group": 1})
+        >>> op.execute(["TileProp5", "Energy"], context, {"pattern": r"^TileProp(\\d+)$", "group": 1})
         OperatorResult(success=True, value=["5"])
     """
 

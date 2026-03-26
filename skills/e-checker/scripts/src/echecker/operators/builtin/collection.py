@@ -303,16 +303,16 @@ class SequentialOperator(AggregateOperator):
     """顺序ID验证操作符
 
     验证ID是否符合 prefix + number 的格式并按顺序累加。
-    例如: item1, item2, item3...
+    例如: eventpass1, eventpass2, eventpass3...
 
     配置:
-        prefix: ID前缀（如 "item"）
+        prefix: ID前缀（如 "eventpass"）
         start_from: 起始序号（默认1）
         allow_gap: 是否允许跳号（默认false）
 
     示例:
         - sequential:
-            prefix: "item"
+            prefix: "eventpass"
             start_from: 1
             allow_gap: false
     """
@@ -320,7 +320,7 @@ class SequentialOperator(AggregateOperator):
     name = "sequential"
     operator_type = OperatorType.VALIDATE
     version = "1.0.0"
-    description = "验证ID按顺序累加（如item1,item2...）"
+    description = "验证ID按顺序累加（如eventpass1,eventpass2...）"
 
     config_spec = {
         "type": "object",
@@ -328,7 +328,7 @@ class SequentialOperator(AggregateOperator):
         "properties": {
             "prefix": {
                 "type": "string",
-                "description": "ID前缀，如 'item'"
+                "description": "ID前缀，如 'eventpass'"
             },
             "start_from": {
                 "type": "integer",

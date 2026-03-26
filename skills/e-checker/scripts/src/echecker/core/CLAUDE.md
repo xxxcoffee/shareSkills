@@ -7,6 +7,7 @@ core 模块是 eChecker 项目的核心校验引擎，采用 V3 Pipeline 操作�
 ```
 core/
 ├── __init__.py          # 模块导出（V3引擎）
+├── context.py           # RowContext 行执行上下文
 └── engine_v3.py         # V3 Pipeline 校验引擎
 ```
 

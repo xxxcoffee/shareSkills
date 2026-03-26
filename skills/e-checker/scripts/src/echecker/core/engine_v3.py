@@ -1,6 +1,6 @@
 """V3校验引擎
 
-使用pipeline操作符语法的校验引擎，兼容V2插件架构。
+使用pipeline操作符语法的校验引擎。
 """
 
 import time
@@ -10,9 +10,8 @@ from typing import Any, Dict, List, Optional, Union, Callable
 
 from echecker.types import ValidationReport, ValidationError, ErrorType, Severity
 from echecker.rules.v3_parser import V3RuleSet, V3Rule, V3ValidationConfig, PipelineValidation, PipelineStep
-from echecker.plugins.manager import PluginManager
-from echecker.plugins.context import PluginContext
-from echecker.plugins.external_data import ExternalDataManager, ExternalDataSource
+from echecker.core.context import RowContext
+from echecker.excel.external_data import ExternalDataManager, ExternalDataSource
 from echecker.excel.provider import ExcelProvider
 from echecker.excel.cell_ref import CellRef, CellRange
 from echecker.expression.template import TemplateExpr
@@ -22,7 +21,7 @@ from echecker.expression.context import EvalContext
 # 辅助函数：解析配置值，支持 TemplateExpr 表达式求值
 def _resolve_config_value(
     value: Any,
-    plugin_context: Any,
+    row_context: Any,
     pipeline_vars: Dict,
     cell_value: Any = None
 ) -> Any:
@@ -30,7 +29,7 @@ def _resolve_config_value(
 
     Args:
         value: 配置值（可能是字符串、TemplateExpr 或其他类型）
-        plugin_context: 插件上下文，用于获取行数据
+        row_context: 行执行上下文，用于获取行数据
         pipeline_vars: Pipeline 变量字典
         cell_value: 当前单元格值（用于 @value 引用）
 
@@ -39,7 +38,7 @@ def _resolve_config_value(
     """
     # 如果是 TemplateExpr，进行表达式求值
     if isinstance(value, TemplateExpr):
-        row_data = getattr(plugin_context, 'row_data', {}) if plugin_context else {}
+        row_data = row_context._row_data if row_context else {}
         context = EvalContext(
             cell_value=cell_value,
             row_data=row_data,
@@ -52,8 +51,8 @@ def _resolve_config_value(
         return value
 
     if value.startswith('@row.'):
-        if plugin_context:
-            return plugin_context.get_row_value(value[5:])
+        if row_context:
+            return row_context.get_row_value(value[5:])
         return None
     elif value.startswith('@'):
         var_name = value[1:]
@@ -451,7 +450,7 @@ class AllExistInOperator(Operator):
                 return OperatorResult(
                     value=None,
                     is_valid=False,
-                    error_message="PluginContext未配置"
+                    error_message="RowContext未配置"
                 )
             col = target_str[5:]
             target_value = plugin_context.get_row_value(col)
@@ -1938,7 +1937,7 @@ class SheetExistsOperator(Operator):
     检查指定的Sheet是否存在。支持变量替换 {value}。
 
     示例:
-        - sheet_exists: "Reward({value})"
+        - sheet_exists: "PassNewReward({value})"
     """
 
     name = "sheet_exists"
@@ -2008,7 +2007,7 @@ class SequentialOperator(Operator):
 
     示例:
         - sequential:
-            prefix: "item"
+            prefix: "eventpass"
             start_from: 1
             allow_gap: false
     """
@@ -2037,7 +2036,7 @@ class RowCountOperator(Operator):
     示例:
         # 获取当前文件指定Sheet的行数（跳过前4行）
         - row_count:
-            sheet: "DetailSheet"
+            sheet: "PassNewEFGH"
             skip_rows: 4
 
         # 通过refs引用获取外部文件行数
@@ -2444,17 +2443,15 @@ class Pipeline:
 class V3ValidationEngine:
     """V3校验引擎
 
-    使用pipeline操作符语法的校验引擎，兼容V2插件架构。
+    使用pipeline操作符语法的校验引擎。
     """
 
     def __init__(
         self,
         operator_manager: Optional[OperatorManager] = None,
-        plugin_manager: Optional[PluginManager] = None,
         external_data: Optional[ExternalDataManager] = None
     ):
         self.operator_manager = operator_manager or OperatorManager()
-        self.plugin_manager = plugin_manager or PluginManager()
         self.external_data = external_data or ExternalDataManager()
         self.excel_provider: Optional[ExcelProvider] = None
         self._report = ValidationReport()
@@ -2480,25 +2477,21 @@ class V3ValidationEngine:
         # 1. 初始化外部数据源
         self._init_external_data(ruleset)
 
-        # 2. 初始化V2插件（用于兼容V2规则）
-        if not self.plugin_manager.list_plugins():
-            self._init_plugins()
-
-        # 3. 打开Excel
+        # 2. 打开Excel
         self.excel_provider = ExcelProvider(str(excel_path)).open()
 
         try:
-            # 4. 执行每条规则
+            # 3. 执行每条规则
             for rule in ruleset.rules:
                 if not rule.enabled:
                     continue
                 self._validate_rule(rule)
 
         finally:
-            # 5. 关闭Excel
+            # 4. 关闭Excel
             self.excel_provider.close()
 
-        # 6. 生成报告摘要
+        # 5. 生成报告摘要
         self._report.summary.duration_seconds = time.time() - start_time
         self._report.summary.total_rules = len(ruleset.rules)
 
@@ -2523,11 +2516,6 @@ class V3ValidationEngine:
             )
             self.external_data.register_source(source)
 
-    def _init_plugins(self) -> None:
-        """初始化插件（V3引擎使用操作符替代插件）"""
-        # V3引擎使用操作符架构，不需要初始化V2插件
-        pass
-
     def _validate_rule(self, rule: V3Rule) -> None:
         """校验单条规则"""
         # 解析目标范围
@@ -2543,9 +2531,6 @@ class V3ValidationEngine:
 
         # 用于跨单元格共享的缓存
         shared_cache: Dict[str, Any] = {}
-
-        # 用于收集需要最终验证的插件
-        finalize_plugins: Dict[str, tuple] = {}
 
         # 检查是否包含聚合操作符的pipeline
         has_aggregate = self._has_aggregate_operator(rule)
@@ -2566,8 +2551,8 @@ class V3ValidationEngine:
                 col_letter = self._column_index_to_letter(cell_ref.col)
                 cell_ref_str = f"{col_letter}{cell_ref.row}"
 
-                # 创建插件上下文
-                plugin_context = PluginContext(
+                # 创建行执行上下文
+                row_context = RowContext(
                     excel_path=self.excel_provider.path,
                     current_sheet=cell_ref.sheet,
                     current_cell=cell_ref_str,
@@ -2581,7 +2566,7 @@ class V3ValidationEngine:
                 # 创建pipeline执行上下文
                 pipeline_context = {
                     'external_data': self.external_data,
-                    'plugin_context': plugin_context,
+                    'plugin_context': row_context,
                     'row_data': row_data,
                     'cell_ref': cell_ref_str,
                     'sheet': cell_ref.sheet,
@@ -2591,23 +2576,9 @@ class V3ValidationEngine:
 
                 # 执行每个校验
                 for validation in rule.validations:
-                    if validation.validation_type == 'pipeline':
-                        self._validate_with_pipeline(
-                            value, pipeline_context, validation, cell_ref_str, rule.id
-                        )
-                    else:
-                        # V2插件兼容模式
-                        plugin = self._validate_with_plugin(value, plugin_context, validation)
-                        if plugin and hasattr(plugin, 'finalize_validation'):
-                            finalize_plugins[validation.validation_type] = (plugin, validation.config)
-
-            # 执行需要最终验证的插件
-            for plugin, config in finalize_plugins.values():
-                # 创建一个通用的上下文用于finalize
-                result = plugin.finalize_validation(plugin_context, config)
-                if not result.is_valid:
-                    for error in result.errors:
-                        self._report.add_error(error)
+                    self._validate_with_pipeline(
+                        value, pipeline_context, validation, cell_ref_str, rule.id
+                    )
 
     def _has_aggregate_operator(self, rule: V3Rule) -> bool:
         """检查规则是否包含聚合操作符"""
@@ -2623,8 +2594,6 @@ class V3ValidationEngine:
         self, rule: V3Rule, cell_refs: list, shared_cache: Dict[str, Any]
     ) -> None:
         """使用聚合操作符验证规则"""
-        import re
-
         # 收集所有单元格的数据
         collected_data: List[Dict] = []
 
@@ -2676,7 +2645,7 @@ class V3ValidationEngine:
                             step.operator, current_value, step.config,
                             {
                                 'external_data': self.external_data,
-                                'plugin_context': PluginContext(
+                                'plugin_context': RowContext(
                                     excel_path=self.excel_provider.path,
                                     current_sheet=data['sheet'],
                                     current_cell=data['cell_ref'],
@@ -2814,46 +2783,6 @@ class V3ValidationEngine:
                 actual=result.actual
             )
             self._report.add_error(error)
-
-    def _validate_with_plugin(
-        self,
-        value: Any,
-        context: PluginContext,
-        validation: V3ValidationConfig
-    ) -> Any:
-        """使用V2插件执行校验（向后兼容）"""
-        from echecker.plugins.base import ValidationPlugin
-        from echecker.rules.v2_schema import ValidationConfig
-
-        # 创建V2兼容的ValidationConfig
-        v2_config = ValidationConfig(
-            type=validation.validation_type,
-            config=validation.config,
-            message=validation.message
-        )
-
-        plugin = self.plugin_manager.get_plugin(v2_config.type)
-
-        if plugin is None:
-            self._report.add_error(ValidationError(
-                rule_id=v2_config.type,
-                cell_ref=context.cell_ref,
-                error_type=ErrorType.CONFIG_ERROR,
-                message=f"未知的校验器类型: {v2_config.type}",
-                severity=Severity.ERROR,
-                sheet_name=context.current_sheet
-            ))
-            return None
-
-        result = plugin.validate(value, context, v2_config.config)
-
-        if not result.is_valid:
-            for error in result.errors:
-                if validation.message and not error.message:
-                    error.message = validation.message
-                self._report.add_error(error)
-
-        return plugin
 
     def _get_row_data(self, sheet: str, row: int) -> Dict[str, Any]:
         """获取整行数据"""

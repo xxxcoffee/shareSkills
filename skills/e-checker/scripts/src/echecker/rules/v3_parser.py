@@ -279,27 +279,6 @@ class V3ValidationConfig:
                 raw_config=raw_config,
                 has_templates=has_templates
             )
-        elif 'type' in data_copy:
-            # V2插件类型（向后兼容）
-            val_type = data_copy.pop('type')
-            message = data_copy.pop('message', None)
-            raw_config = dict(data_copy)
-
-            # 处理模板表达式
-            if preprocessor:
-                config = preprocessor.process(data_copy)
-                has_templates = PipelineStep._check_templates(config)
-            else:
-                config = data_copy
-                has_templates = False
-
-            return cls(
-                validation_type=val_type,
-                config=config,
-                message=message,
-                raw_config=raw_config,
-                has_templates=has_templates
-            )
         else:
             # 默认假设第一个键是操作符，使用pipeline格式
             pipeline = PipelineValidation.from_config([data_copy], preprocessor)
