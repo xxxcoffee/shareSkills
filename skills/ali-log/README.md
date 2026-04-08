@@ -134,7 +134,7 @@ logs = client.query_logs(
 )
 
 for log in logs:
-    print(log.get_contents())
+    print(log)
 ```
 
 ### Using Query Builder

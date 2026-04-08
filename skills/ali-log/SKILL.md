@@ -22,12 +22,12 @@ description: 阿里云日志服务(SLS)查询工具，支持拉取原始日志�
 
 | 查询方式 | 数据量限制 | 适用场景 |
 |----------|-----------|----------|
-| `query_logs` | 单次最多返回100条 | 小数据量实时查询 |
+| `query_logs` | 建议小结果集使用 | 小数据量实时查询 |
 | `query_all_logs` | 建议最多5000条 | 中等数据量分页查询 |
 | `create_download_job` | 仅查询无限制，SQL分析100万行/2GB | **大量日志下载（推荐）** |
 
 **重要提示**：当需要查询/下载的日志数量超过5000条时，强烈建议使用 `create_download_job` 创建日志下载任务，因为：
-1. `query_logs` 接口有分页限制（单次最多100条），大量数据查询效率低
+1. `query_logs` 更适合小结果集查询，大量数据查询效率低
 2. 长时间分页查询可能导致超时
 3. 下载任务支持异步执行，完成后从OSS下载，稳定可靠
 
@@ -433,24 +433,23 @@ logs = client.query_logs(query="* | LIMIT 5")
 logs = client.query_logs(query="*", limit=5)
 ```
 
-### 3. query_logs 返回的是 QueriedLog 对象，不是字典
+### 3. query_logs 返回的是字典，不是 QueriedLog 对象
 
-**问题**: `AttributeError: 'QueriedLog' object has no attribute 'get'`
+**问题**: 误以为返回值是 SDK 的 `QueriedLog`，按对象方法访问时报错
 
-**解决**: 需要通过 `get_contents()` 方法获取内容，内容为字典格式：
+**解决**: 直接按字典读取字段即可。普通检索查询会优先返回 shard 原始日志，字段会比分析结果更完整：
 ```python
 logs = client.query_logs(query="*")
 
 for log in logs:
-    # log 是 QueriedLog 对象
-    contents = log.get_contents()  # 返回 dict
-    timestamp = log.get_time()     # 返回 Unix 时间戳
-    source = log.get_source()      # 返回日志来源
+    timestamp = log.get("__time__")
+    source = log.get("__source__")
+    data = log.get("data")
 
     # 对于 JSON 格式的日志
-    if 'content' in contents:
+    if data:
         import json
-        data = json.loads(contents['content'])
+        payload = json.loads(data)
 ```
 
 ### 4. 时间范围选择要适当

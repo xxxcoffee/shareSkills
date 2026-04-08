@@ -99,6 +99,118 @@ class AliLogClient:
         else:
             raise ValueError(f"Unsupported time type: {type(time_val)}")
 
+    @staticmethod
+    def _is_analysis_query(query: str) -> bool:
+        """判断是否为包含分析语句的查询。"""
+        return '|' in (query or '')
+
+    @staticmethod
+    def _safe_int(value: Any, default: int = 0) -> int:
+        """尽力将值转为整数。"""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _normalize_queried_log(log: Any) -> Dict[str, Any]:
+        """将 SDK 的 QueriedLog 统一转换为字典。"""
+        if isinstance(log, dict):
+            return dict(log)
+
+        normalized: Dict[str, Any] = {}
+
+        if hasattr(log, 'get_contents'):
+            normalized.update(log.get_contents() or {})
+
+        if hasattr(log, 'get_time'):
+            normalized['__time__'] = str(log.get_time())
+
+        if hasattr(log, 'get_source'):
+            source = log.get_source()
+            if source:
+                normalized['__source__'] = source
+
+        if not normalized and hasattr(log, '_to_dict'):
+            normalized.update(log._to_dict())
+
+        return normalized
+
+    @staticmethod
+    def _extract_shard_id(shard_info: Dict[str, Any]) -> int:
+        """兼容不同 SDK 版本返回的 shard id 字段名。"""
+        for key in ('shardID', 'shardId', 'shard_id'):
+            if key in shard_info:
+                return int(shard_info[key])
+        raise KeyError(f"Cannot find shard id in shard info: {shard_info}")
+
+    def _query_raw_logs(
+        self,
+        from_time: Union[int, float, str, datetime],
+        to_time: Union[int, float, str, datetime],
+        query: str,
+        offset: int,
+        limit: int,
+        project: str,
+        logstore: str
+    ) -> List[Dict[str, Any]]:
+        """
+        通过 shard 原始拉取返回尽可能完整的日志字段。
+
+        对每个 shard 拉取 offset + limit 条，合并后按时间排序再分页，
+        这样在常见小结果集场景下可以尽量保留原始日志的完整内容。
+        """
+        if limit <= 0:
+            return []
+
+        per_shard_target = offset + limit
+        all_logs: List[Dict[str, Any]] = []
+
+        for shard in self.list_shards(project=project, logstore=logstore):
+            shard_id = self._extract_shard_id(shard)
+            cursor = self.get_cursor(
+                shard_id=shard_id,
+                timestamp=from_time,
+                project=project,
+                logstore=logstore
+            )
+            end_cursor = self.get_cursor(
+                shard_id=shard_id,
+                timestamp=to_time,
+                project=project,
+                logstore=logstore
+            )
+
+            shard_logs: List[Dict[str, Any]] = []
+            while cursor != end_cursor and len(shard_logs) < per_shard_target:
+                batch_size = min(1000, per_shard_target - len(shard_logs))
+                logs, next_cursor = self.pull_logs(
+                    shard_id=shard_id,
+                    cursor=cursor,
+                    count=batch_size,
+                    end_cursor=end_cursor,
+                    query=query,
+                    project=project,
+                    logstore=logstore
+                )
+
+                if not logs or next_cursor == cursor:
+                    break
+
+                shard_logs.extend(logs)
+                cursor = next_cursor
+
+            all_logs.extend(shard_logs)
+
+        all_logs.sort(
+            key=lambda log: (
+                self._safe_int(log.get('__time__')),
+                self._safe_int(log.get('__time_ns_part__')),
+                str(log.get('__source__', ''))
+            )
+        )
+        return all_logs[offset:offset + limit]
+
     def list_shards(
         self,
         project: Optional[str] = None,
@@ -218,11 +330,10 @@ class AliLogClient:
             query=query
         )
 
-        logs = []
-        for log_group in response.get_flatten_logs():
-            for log in log_group.get('logs', []):
-                logs.append(log)
-
+        if hasattr(response, 'get_flatten_logs_json'):
+            logs = response.get_flatten_logs_json(time_as_str=True)
+        else:
+            logs = response.get_body().get('logs', [])
         next_cursor = response.get_next_cursor()
         return logs, next_cursor
 
@@ -237,7 +348,10 @@ class AliLogClient:
         logstore: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
-        查询分析日志（使用GetLogsV2接口）
+        查询日志。
+
+        普通检索查询优先走 shard 原始日志拉取，以尽量保留完整字段；
+        包含分析语句（如 `查询条件 | SELECT ...`）时，继续使用 GetLogs 接口。
 
         Args:
             from_time: 起始时间
@@ -249,10 +363,21 @@ class AliLogClient:
             logstore: Logstore名称
 
         Returns:
-            日志列表
+            日志列表（统一返回字典）
         """
         project = self._get_project(project)
         logstore = self._get_logstore(logstore)
+
+        if not self._is_analysis_query(query):
+            return self._query_raw_logs(
+                from_time=from_time,
+                to_time=to_time,
+                query=query,
+                offset=offset,
+                limit=limit,
+                project=project,
+                logstore=logstore
+            )
 
         from_ts = self._time_to_timestamp(from_time)
         to_ts = self._time_to_timestamp(to_time)
@@ -274,7 +399,7 @@ class AliLogClient:
         else:
             response = self.client.get_logs(request)
 
-        return response.get_logs()
+        return [self._normalize_queried_log(log) for log in response.get_logs()]
 
     def query_all_logs(
         self,
@@ -289,7 +414,7 @@ class AliLogClient:
         查询所有日志（自动分页）
 
         注意：如果需要查询的日志数量超过5000条，建议使用 create_download_job 创建日志下载任务，
-        因为 query_logs 接口有数据量限制（单次最多返回100条，大量数据查询效率低且可能超时）。
+        因为 query_logs 更适合小结果集查询，大量数据分页查询效率低且可能超时。
 
         Args:
             from_time: 起始时间
