@@ -4,6 +4,9 @@
 
 检查描述: <修改为一句检查目的描述>
 对应规则: <修改为 checker-rule.md 中的规则引用>
+
+注意: 脚本只需将检查报告打印到 stdout，run_all.py 会捕获并汇总。
+不再需要单独保存报告文件。
 """
 import pandas as pd
 from pathlib import Path
@@ -13,7 +16,6 @@ from datetime import datetime
 # 修改为实际 Excel 文件路径
 EXCEL_PATH = Path("path/to/file.xlsx")
 SHEET_NAME = "Sheet1"
-REPORTS_DIR = Path(".e-checker/reports")
 
 
 def check_rule(df: pd.DataFrame) -> list[dict]:
@@ -62,9 +64,6 @@ def generate_report(failures: list[dict], total_rows: int, script_name: str) -> 
     fail_rate = len(failures) / total_rows * 100 if total_rows > 0 else 0
 
     lines = [
-        "=" * 60,
-        f"检查报告: {script_name}",
-        "=" * 60,
         f"数据源: {EXCEL_PATH}",
         f"Sheet: {SHEET_NAME}",
         f"检查时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
@@ -86,15 +85,12 @@ def generate_report(failures: list[dict], total_rows: int, script_name: str) -> 
                 f"{str(f['expected']):<15} | {str(f['actual']):<15} | {f['reason']}"
             )
     else:
-        lines.append("全部通过 ✓")
+        lines.append("全部通过")
 
-    lines.append("=" * 60)
     return "\n".join(lines)
 
 
 def main():
-    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-
     if not EXCEL_PATH.exists():
         print(f"[错误] Excel 文件不存在: {EXCEL_PATH}")
         return
@@ -106,14 +102,8 @@ def main():
     script_name = Path(__file__).stem
     report = generate_report(failures, total_rows, script_name)
 
-    # 输出到控制台
+    # 只输出到 stdout，由 run_all.py 统一汇总
     print(report)
-
-    # 保存到报告文件
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_path = REPORTS_DIR / f"{script_name}_{timestamp}.txt"
-    report_path.write_text(report, encoding="utf-8")
-    print(f"\n报告已保存至: {report_path}")
 
 
 if __name__ == "__main__":
