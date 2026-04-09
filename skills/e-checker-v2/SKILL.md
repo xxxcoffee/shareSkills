@@ -1,11 +1,6 @@
 ---
-name: e-checker
-description: |
-  Excel 表格数据检查技能。通过编写和执行 Python 脚本来验证 Excel 表数据及 Sheet 之间的关系，
- 并生成检查报告。适用于：数据校验、表间关系验证、数据完整性检查、字段格式验证等场景。
- 当用户提到"检查表格"、"验证 Excel"、"数据检查"、"sheet 关系检查"、"e-checker"、
- "checker-rule"，或者提供了 checker-rule.md 规则文件、.e-checker 脚本目录时，
- 务必使用此技能。即使只是需要快速检查某个 Excel 的列值是否符合规则，也应该使用。
+name: e-checker-v2
+description: Excel 表格数据检查技能 V2。通过编写和执行 Python 脚本来验证 Excel 表数据及 Sheet 之间的关系，并生成检查报告。适用于：数据校验、表间关系验证、数据完整性检查、字段格式验证等场景。当用户提到"检查表格"、"验证 Excel"、"数据检查"、"sheet 关系检查"、"e-checker-v2"、"checker-rule"，或者提供了 checker-rule.md 规则文件、.e-checker 脚本目录时，务必使用此技能。即使只是需要快速检查某个 Excel 的列值是否符合规则，也应该使用。
 ---
 
 # E-Checker: Excel 表格数据检查技能
