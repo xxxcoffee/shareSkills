@@ -123,12 +123,12 @@ description: Excel 表格数据检查技能 V2。通过编写和执行 Python �
 
     ## 规则定义
 
-    梦幻岛检查
-    activities/mhd2下的mhd2表Mhd2BasicInfo中的ID列，需要在mhd2Shop表有对应的Mhd2Shop和Mhd2ShopReward页签，页签名字后面括号本期的mhdid
-    activities/mhd2的Mhd2BasicInfo中的ID列不可为空
+    活动模块检查
+    activities/event表EventBasicInfo中的ID列，需要在eventShop表有对应的EventShop和EventShopReward页签，页签名字后面括号本期的eventId
+    activities/event的EventBasicInfo中的ID列不可为空
 
-    背包检查
-    bagskinGift表bagskinGiftInfo里的content字段中第三个奖励的背包的id，需要在manager表ManagerBagSkin里存在
+    道具检查
+    itemGift表itemGiftInfo里的content字段中第三个奖励的道具id，需要在manager表ManagerItem里存在
 
 **规则说明：**
 - 模块名是**不包含路径分隔符**（`/`、`.`、`:`）的独立行
@@ -219,26 +219,26 @@ python .e-checker/<script_name>.py
 检查模块: 2 个
 ============================================================
 
-## 梦幻岛检查
+## 活动模块检查
 ------------------------------------------------------------
-涉及文件: activities/mhd2.xlsx
+涉及文件: activities/event.xlsx
 
-  [Mhd2BasicInfo ID列不可为空]
+  [EventBasicInfo ID列不可为空]
     状态: 通过
 
-  [Mhd2BasicInfo ID需要在Shop表存在]
+  [EventBasicInfo ID需要在Shop表存在]
     状态: 失败
-    涉及文件: activities/mhd2.xlsx
+    涉及文件: activities/event.xlsx
     失败详情:
-      - activities/mhd2.xlsx -> Mhd2BasicInfo -> 行45 -> id
-        原因: ID 1001 在 Mhd2Shop 页签中不存在
+      - activities/event.xlsx -> EventBasicInfo -> 行45 -> id
+        原因: ID 1001 在 EventShop 页签中不存在
         实际值: 1001
 
-## 背包检查
+## 道具检查
 ------------------------------------------------------------
-涉及文件: bagskinGift.xlsx, manager.xlsx
+涉及文件: itemGift.xlsx, manager.xlsx
 
-  [bagskinGift content背包id需要在ManagerBagSkin存在]
+  [itemGift content道具id需要在ManagerItem存在]
     状态: 通过
 
 ============================================================

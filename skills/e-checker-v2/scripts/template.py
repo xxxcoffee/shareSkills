@@ -17,7 +17,7 @@ from pathlib import Path
 EXCEL_PATH = Path("path/to/file.xlsx")
 SHEET_NAME = "Sheet1"
 
-# 模块名（对应 checker-rule.md 中的模块标题，如 "梦幻岛检查"）
+# 模块名（对应 checker-rule.md 中的模块标题，如 "活动模块检查"）
 MODULE_NAME = "模块名称"
 
 # 检查项描述（对应具体规则描述）

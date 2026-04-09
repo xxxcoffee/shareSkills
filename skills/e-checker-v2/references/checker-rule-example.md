@@ -12,12 +12,12 @@
 ### 示例
 
 ```
-梦幻岛检查
-activities/mhd2下的mhd2表Mhd2BasicInfo中的ID列，需要在mhd2Shop表有对应的Mhd2Shop和Mhd2ShopReward页签，页签名字后面括号本期的mhdid
-activities/mhd2的Mhd2BasicInfo中的ID列不可为空
+活动模块检查
+activities/event表EventBasicInfo中的ID列，需要在eventShop表有对应的EventShop和EventShopReward页签
+activities/event的EventBasicInfo中的ID列不可为空
 
-背包检查
-bagskinGift表bagskinGiftInfo里的content字段中第三个奖励的背包的id，需要在manager表ManagerBagSkin里存在
+道具检查
+itemGift表itemGiftInfo里的content字段中第三个奖励的道具id，需要在manager表ManagerItem里存在
 ```
 
 ## 你的规则
