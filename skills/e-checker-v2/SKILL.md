@@ -117,28 +117,24 @@ description: Excel 表格数据检查技能 V2。通过编写和执行 Python �
 
     ## 规则定义格式
 
-### 操作方法
+规则按**模块**分组，每个模块下包含多条检查规则，每条规则为一行纯文本描述。
 
-```bash
-# 查找规则文件
-find . -name "checker-rule.md" -maxdepth 2
+格式示例：
 
-# 读取规则文件
-cat checker-rule.md
-```
+    ## 规则定义
 
-读取后，**先检查是否有表格结构说明部分**：
-- 如果为空或缺失，使用 `scripts/explorer.py` 分析表格结构，填充结构说明
-- 如果已有结构说明，阅读并理解表格构造，进入步骤 1
+    梦幻岛检查
+    activities/mhd2下的mhd2表Mhd2BasicInfo中的ID列，需要在mhd2Shop表有对应的Mhd2Shop和Mhd2ShopReward页签，页签名字后面括号本期的mhdid
+    activities/mhd2的Mhd2BasicInfo中的ID列不可为空
 
-## 步骤 1: 分析需求
+    背包检查
+    bagskinGift表bagskinGiftInfo里的content字段中第三个奖励的背包的id，需要在manager表ManagerBagSkin里存在
 
-### 需求来源
-
-需求可能来自两个渠道，按优先级：
-
-1. **规则文件** (`checker-rule.md`) — 最常见的需求来源。该文件通常位于工作目录根路径，逐行列出检查需求。
-2. **用户描述** — 用户直接口头描述需要检查的内容。
+**规则说明：**
+- 模块名是**不包含路径分隔符**（`/`、`.`、`:`）的独立行
+- 规则行包含文件路径或表名引用，描述具体检查条件
+- 每条规则对应一个检查脚本（或一个检查函数）
+- 编写脚本时，在模板中设置 `MODULE_NAME` 和 `CHECK_NAME` 对应模块和规则
 
 ### 操作方法
 
@@ -210,73 +206,69 @@ python .e-checker/<script_name>.py
 
 ### 统一报告格式
 
-运行 `run_all.py` 会生成一份汇总报告，文件名为 `YYYY-MM-DD-HH:MM:SS.txt`，保存在 `.e-checker/reports/` 目录下。
+运行 `run_all.py` 会生成一份按**模块分组**的汇总报告，文件名为 `YYYY-MM-DD-HH:MM:SS.txt`，保存在 `.e-checker/reports/` 目录下。
 
 报告结构：
 
 ```
 ============================================================
-统一检查报告
+检查报告
 ============================================================
 检查时间: 2026-04-09 15:14:13
-检查脚本数: 3
+检查脚本: 3 个
+检查模块: 2 个
 ============================================================
 
-============================================================
-检查脚本: check_id_unique.py
-============================================================
-数据源: config.xlsx
-Sheet: Activity
-检查时间: 2026-04-09 15:14:13
+## 梦幻岛检查
 ------------------------------------------------------------
-总记录数: 150
-通过: 148
-失败: 2
-失败率: 1.33%
+涉及文件: activities/mhd2.xlsx
+
+  [Mhd2BasicInfo ID列不可为空]
+    状态: 通过
+
+  [Mhd2BasicInfo ID需要在Shop表存在]
+    状态: 失败
+    涉及文件: activities/mhd2.xlsx
+    失败详情:
+      - activities/mhd2.xlsx -> Mhd2BasicInfo -> 行45 -> id
+        原因: ID 1001 在 Mhd2Shop 页签中不存在
+        实际值: 1001
+
+## 背包检查
 ------------------------------------------------------------
-失败详情:
-  行号 | 字段            | 期望            | 实际            | 原因
-  ------+-----------------+-----------------+-----------------+-----
-    45 | id              | 唯一            | 1001            | id 重复
-    89 | id              | 唯一            | 1001            | id 重复
+涉及文件: bagskinGift.xlsx, manager.xlsx
+
+  [bagskinGift content背包id需要在ManagerBagSkin存在]
+    状态: 通过
 
 ============================================================
-检查脚本: check_cross_ref.py
+汇总
 ============================================================
-数据源: config.xlsx
-Sheet: Unlock
-...
-------------------------------------------------------------
-全部通过
-
-============================================================
-检查脚本: check_format.py
-============================================================
-...
-
-============================================================
-执行汇总
-============================================================
-  check_id_unique.py: 成功
-  check_cross_ref.py: 成功
-  check_format.py: 成功
-
-总计: 3/3 脚本执行成功
+  总检查数: 3
+  通过: 2
+  失败: 1
+  通过率: 66.7%
 ============================================================
 ```
 
-**关键点：**
-- 检查脚本只需将报告打印到 stdout，由 `run_all.py` 捕获并汇总
-- 不保留每个脚本的单独报告文件
-- 报告按执行顺序拼接，末尾附加执行汇总
-- 旧报告自动清理，最多保留 10 个
+**报告特点：**
+- 按模块名分类，清晰展示每个模块的检查结果
+- 每个模块展示涉及的文件列表
+- 失败的检查展示具体失败位置（文件 → Sheet → 行号 → 列名）和原因
+- 末尾汇总展示通过/失败数量和通过率
+
+**脚本输出格式：**
+- 检查脚本输出 JSON 到 stdout
+- 每个检查项包含: `module`（模块名）、`check`（检查描述）、`status`（pass/fail/error）、`files`（涉及文件）、`details`（失败详情）
+- `run_all.py` 解析 JSON 并按模块分组生成报告
 
 ### 检查脚本编写要点
 
 脚本应当：
 - 使用 `openpyxl` 读取 `.xlsx` 文件（保留格式信息）
 - 使用 `pandas` 进行数据处理和批量检查
-- 将检查结果打印到 stdout，**不需要**单独保存报告文件
+- 将检查结果以 JSON 格式打印到 stdout，**不需要**单独保存报告文件
+- JSON 中包含 `module`、`check`、`status`、`files`、`details` 字段
 
 ## 脚本编写规范
 
@@ -303,23 +295,25 @@ import pandas as pd  # 用于数据处理和检查逻辑
 ```python
 """
 检查描述: <一句话说明检查目的>
-对应规则: <checker-rule.md 中的规则编号或描述>
+对应规则: <checker-rule.md 中的模块名 + 规则描述>
 
-注意: 脚本只需将检查报告打印到 stdout，run_all.py 会捕获并汇总。
-不再需要单独保存报告文件。
+注意: 脚本输出 JSON 到 stdout，run_all.py 会解析并按模块分组生成报告。
 """
+import json
 import pandas as pd
 from pathlib import Path
-from datetime import datetime
 
 # === 配置 ===
 EXCEL_PATH = Path("path/to/file.xlsx")
 SHEET_NAME = "Sheet1"
+MODULE_NAME = "模块名称"    # 对应 checker-rule.md 中的模块标题
+CHECK_NAME = "检查项描述"  # 对应具体规则描述
+FILES = ["path/to/file.xlsx"]
 
 def check_<rule_name>(df: pd.DataFrame) -> list[dict]:
     """
     执行具体的检查逻辑。
-    返回: 失败记录列表，每项包含行号、字段、期望值、实际值、原因
+    返回: 失败详情列表，每项包含 file/sheet/row/column/reason 等字段
     """
     failures = []
     # 实现检查逻辑
@@ -332,9 +326,16 @@ def main():
     # 执行检查
     failures = check_<rule_name>(df)
     
-    # 生成并打印报告到 stdout
-    report = generate_report(failures, len(df), Path(__file__).stem)
-    print(report)
+    # 构建 JSON 结果
+    if failures:
+        result = [{"module": MODULE_NAME, "check": CHECK_NAME,
+                    "status": "fail", "files": FILES, "details": failures}]
+    else:
+        result = [{"module": MODULE_NAME, "check": CHECK_NAME,
+                    "status": "pass", "files": FILES}]
+    
+    # 输出 JSON 到 stdout
+    print(json.dumps(result, ensure_ascii=False))
 
 if __name__ == "__main__":
     main()
@@ -342,9 +343,9 @@ if __name__ == "__main__":
 
 ## 工具脚本
 
-- `scripts/explorer.py` — 快速查看 Excel 文件的 Sheet 列表和列名，用于字段对齐
-- `scripts/run_all.py` — 批量执行 `.e-checker/` 下所有检查脚本
-- `scripts/template.py` — 新检查脚本的模板，可复制使用
+- `scripts/explorer.py` — 快速查看 Excel 文件的 Sheet 列表和前 10 行示例数据
+- `scripts/run_all.py` — 批量执行检查脚本，按模块分组生成统一报告
+- `scripts/template.py` — 新检查脚本的模板，输出 JSON 格式结果
 
 ## 常见检查类型参考
 

@@ -8,6 +8,7 @@
 报告统一保存在 .e-checker/reports/ 目录下，文件名格式: YYYY-MM-DD-HH:MM:SS.txt
 """
 import sys
+import json
 import subprocess
 from pathlib import Path
 from datetime import datetime
@@ -38,23 +39,11 @@ def run_all_checks(checker_dir: Path | None = None) -> None:
             old.unlink()
 
     print(f"找到 {len(scripts)} 个检查脚本\n")
-    report_parts = []
-    results = []
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    report_parts.append(f"{'=' * 60}")
-    report_parts.append(f"统一检查报告")
-    report_parts.append(f"{'=' * 60}")
-    report_parts.append(f"检查时间: {timestamp}")
-    report_parts.append(f"检查脚本数: {len(scripts)}")
-    report_parts.append(f"{'=' * 60}")
-    report_parts.append("")
+    # 收集所有检查结果
+    all_results = []  # list of (script_name, json_results_list_or_error)
 
     for script in scripts:
-        report_parts.append(f"{'=' * 60}")
-        report_parts.append(f"检查脚本: {script.name}")
-        report_parts.append(f"{'=' * 60}")
-
         try:
             result = subprocess.run(
                 [sys.executable, str(script)],
@@ -62,38 +51,135 @@ def run_all_checks(checker_dir: Path | None = None) -> None:
                 text=True,
                 timeout=300,
             )
-            if result.stdout:
-                report_parts.append(result.stdout)
-            if result.stderr:
-                report_parts.append(f"[STDERR] {result.stderr}")
-            status = "成功" if result.returncode == 0 else "失败"
-            results.append((script.name, status))
+            if result.returncode == 0 and result.stdout.strip():
+                try:
+                    json_data = json.loads(result.stdout.strip())
+                    all_results.append((script.name, json_data, None))
+                except json.JSONDecodeError:
+                    all_results.append((script.name, None, f"JSON 解析失败:\n{result.stdout}"))
+            else:
+                error_msg = result.stderr.strip() if result.stderr else result.stdout.strip()
+                all_results.append((script.name, None, error_msg or "无输出"))
         except subprocess.TimeoutExpired:
-            report_parts.append("[超时] 脚本执行超时 (300s)")
-            results.append((script.name, "超时"))
+            all_results.append((script.name, None, "脚本执行超时 (300s)"))
         except Exception as e:
-            report_parts.append(f"[异常] {e}")
-            results.append((script.name, "异常"))
+            all_results.append((script.name, None, str(e)))
 
-        report_parts.append("")
+    # 按模块分组
+    modules = {}  # module_name -> list of (script_name, check_result)
+    for script_name, json_data, error in all_results:
+        if error:
+            # 脚本执行失败，归入 "未分类"
+            if "未分类" not in modules:
+                modules["未分类"] = []
+            modules["未分类"].append((script_name, {"status": "error", "error": error}))
+        elif json_data:
+            for item in json_data:
+                module = item.get("module", "未分类")
+                if module not in modules:
+                    modules[module] = []
+                modules[module].append((script_name, item))
 
-    # 汇总统计
-    report_parts.append(f"{'=' * 60}")
-    report_parts.append(f"执行汇总")
-    report_parts.append(f"{'=' * 60}")
-    passed = 0
-    for name, status in results:
-        report_parts.append(f"  {name}: {status}")
-        if status == "成功":
-            passed += 1
-    report_parts.append(f"\n总计: {passed}/{len(results)} 脚本执行成功")
-    report_parts.append(f"{'=' * 60}")
+    # 生成报告
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    lines = []
 
-    # 输出到控制台
-    full_report = "\n".join(report_parts)
+    # 报告头
+    lines.append("=" * 60)
+    lines.append("检查报告")
+    lines.append("=" * 60)
+    lines.append(f"检查时间: {timestamp}")
+    lines.append(f"检查脚本: {len(scripts)} 个")
+    lines.append(f"检查模块: {len(modules)} 个")
+    lines.append("=" * 60)
+    lines.append("")
+
+    # 统计
+    total_checks = 0
+    total_pass = 0
+    total_fail = 0
+
+    # 按模块输出
+    for module_name, checks in modules.items():
+        lines.append(f"## {module_name}")
+        lines.append("-" * 60)
+
+        # 收集该模块涉及的所有文件
+        all_files = set()
+        for _, item in checks:
+            if "files" in item:
+                all_files.update(item["files"])
+
+        if all_files:
+            lines.append(f"涉及文件: {', '.join(sorted(all_files))}")
+            lines.append("")
+
+        for _, item in checks:
+            if item.get("status") == "error":
+                lines.append(f"  [{item.get('check', '未知检查')}]")
+                lines.append(f"    状态: 执行错误")
+                lines.append(f"    原因: {item.get('error', '未知错误')}")
+                lines.append("")
+                total_checks += 1
+                total_fail += 1
+                continue
+
+            check_name = item.get("check", "未知检查")
+            status = item.get("status", "unknown")
+            files = item.get("files", [])
+            details = item.get("details", [])
+
+            total_checks += 1
+            if status == "pass":
+                total_pass += 1
+                lines.append(f"  [{check_name}]")
+                lines.append(f"    状态: 通过")
+                lines.append("")
+            else:
+                total_fail += 1
+                lines.append(f"  [{check_name}]")
+                lines.append(f"    状态: 失败")
+                if files:
+                    lines.append(f"    涉及文件: {', '.join(files)}")
+                if details:
+                    lines.append(f"    失败详情:")
+                    for d in details:
+                        loc_parts = []
+                        if d.get("file"):
+                            loc_parts.append(d["file"])
+                        if d.get("sheet"):
+                            loc_parts.append(d["sheet"])
+                        if d.get("row"):
+                            loc_parts.append(f"行{d['row']}")
+                        if d.get("column"):
+                            loc_parts.append(d["column"])
+                        loc = " -> ".join(loc_parts) if loc_parts else "未知位置"
+
+                        lines.append(f"      - {loc}")
+                        if d.get("reason"):
+                            lines.append(f"        原因: {d['reason']}")
+                        if d.get("actual") is not None:
+                            lines.append(f"        实际值: {d['actual']}")
+                        if d.get("expected") is not None:
+                            lines.append(f"        期望: {d['expected']}")
+                lines.append("")
+
+    # 汇总
+    lines.append("=" * 60)
+    lines.append("汇总")
+    lines.append("=" * 60)
+    lines.append(f"  总检查数: {total_checks}")
+    lines.append(f"  通过: {total_pass}")
+    lines.append(f"  失败: {total_fail}")
+    if total_checks > 0:
+        pass_rate = total_pass / total_checks * 100
+        lines.append(f"  通过率: {pass_rate:.1f}%")
+    lines.append("=" * 60)
+
+    full_report = "\n".join(lines)
     print(full_report)
 
-    # 保存统一报告
+    # 保存报告
     report_filename = datetime.now().strftime("%Y-%m-%d-%H:%M:%S.txt")
     report_path = reports_dir / report_filename
     report_path.write_text(full_report, encoding="utf-8")
