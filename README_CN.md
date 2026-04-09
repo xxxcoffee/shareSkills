@@ -49,6 +49,20 @@ Excel 配置检查工具，基于 YAML 规则验证 Excel 数据。
 
 [查看详情](./skills/e-checker/)
 
+### e-checker-v2
+
+通过 Python 脚本执行 Excel 数据验证，生成结构化检查报告。
+
+**功能特性：**
+- 基于 `checker-rule.md` 规则文件的表格数据检查
+- 脚本化验证逻辑，支持复用模板
+- 跨表关系验证
+- 执行前字段对齐校验
+- 结构化检查报告，包含失败详情
+- Explorer 工具快速查看 Sheet 和列名
+
+[查看详情](./skills/e-checker-v2/)
+
 ## 安装方式
 
 ### 方式 1：克隆并复制
@@ -89,6 +103,8 @@ npx shareskills install ali-log
 
 ## Skill 结构
 
+### ali-log / e-checker / xlsx-fix
+
 ```
 ~/.claude/skills/
 └── ali-log/
@@ -99,6 +115,21 @@ npx shareskills install ali-log
     ├── README.md            # Skill 说明（英文）
     ├── README_CN.md         # Skill 说明（中文）
     └── requirements.txt     # 依赖项
+```
+
+### e-checker-v2
+
+```
+~/.claude/skills/
+└── e-checker-v2/
+    ├── SKILL.md              # Skill 文档
+    ├── scripts/
+    │   ├── explorer.py       # Sheet/列检查工具
+    │   ├── run_all.py        # 批量执行脚本
+    │   └── template.py       # 脚本模板
+    └── references/
+        ├── check_patterns.md # 常见检查模式
+        └── checker-rule-example.md
 ```
 
 ## 开发指南

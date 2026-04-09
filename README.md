@@ -49,6 +49,20 @@ Excel configuration checker for validating Excel data against YAML rule definiti
 
 [View Details](./skills/e-checker/)
 
+### e-checker-v2
+
+Excel data validation through Python scripts with structured reporting.
+
+**Features:**
+- Rule-based Excel data checking via `checker-rule.md` files
+- Script-based validation with reusable templates
+- Cross-sheet relationship verification
+- Field alignment verification before execution
+- Structured check reports with failure details
+- Explorer utility for quick sheet/column inspection
+
+[View Details](./skills/e-checker-v2/)
+
 ## Installation
 
 ### Method 1: Clone and Copy
@@ -89,6 +103,8 @@ npx shareskills install ali-log
 
 ## Skill Structure
 
+### ali-log / e-checker / xlsx-fix
+
 ```
 ~/.claude/skills/
 └── ali-log/
@@ -99,6 +115,21 @@ npx shareskills install ali-log
     ├── README.md            # Skill readme (EN)
     ├── README_CN.md         # Skill readme (CN)
     └── requirements.txt     # Dependencies
+```
+
+### e-checker-v2
+
+```
+~/.claude/skills/
+└── e-checker-v2/
+    ├── SKILL.md              # Skill documentation
+    ├── scripts/
+    │   ├── explorer.py       # Sheet/column inspector
+    │   ├── run_all.py        # Batch script runner
+    │   └── template.py       # Script template
+    └── references/
+        ├── check_patterns.md # Common check patterns
+        └── checker-rule-example.md
 ```
 
 ## Development
