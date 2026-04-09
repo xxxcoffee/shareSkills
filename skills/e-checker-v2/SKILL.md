@@ -290,62 +290,27 @@ import pandas as pd  # 用于数据处理和检查逻辑
 
 ### 脚本模板
 
-每个检查脚本应遵循以下结构：
+新检查脚本应放在 `.e-checker/` 目录下，基于 `scripts/template.py` 复制修改。
 
-```python
-"""
-检查描述: <一句话说明检查目的>
-对应规则: <checker-rule.md 中的模块名 + 规则描述>
-
-注意: 脚本输出 JSON 到 stdout，run_all.py 会解析并按模块分组生成报告。
-"""
-import json
-import pandas as pd
-from pathlib import Path
-
-# === 配置 ===
-EXCEL_PATH = Path("path/to/file.xlsx")
-SHEET_NAME = "Sheet1"
-MODULE_NAME = "模块名称"    # 对应 checker-rule.md 中的模块标题
-CHECK_NAME = "检查项描述"  # 对应具体规则描述
-FILES = ["path/to/file.xlsx"]
-
-def check_<rule_name>(df: pd.DataFrame) -> list[dict]:
-    """
-    执行具体的检查逻辑。
-    返回: 失败详情列表，每项包含 file/sheet/row/column/reason 等字段
-    """
-    failures = []
-    # 实现检查逻辑
-    return failures
-
-def main():
-    # 读取数据
-    df = pd.read_excel(EXCEL_PATH, sheet_name=SHEET_NAME, engine='openpyxl')
-    
-    # 执行检查
-    failures = check_<rule_name>(df)
-    
-    # 构建 JSON 结果
-    if failures:
-        result = [{"module": MODULE_NAME, "check": CHECK_NAME,
-                    "status": "fail", "files": FILES, "details": failures}]
-    else:
-        result = [{"module": MODULE_NAME, "check": CHECK_NAME,
-                    "status": "pass", "files": FILES}]
-    
-    # 输出 JSON 到 stdout
-    print(json.dumps(result, ensure_ascii=False))
-
-if __name__ == "__main__":
-    main()
-```
+脚本要求：
+- 设置 `MODULE_NAME`（对应 checker-rule.md 模块标题）和 `CHECK_NAME`（具体规则描述）
+- 设置 `EXCEL_PATH`、`SHEET_NAME`、`FILES`
+- 实现检查逻辑，返回失败详情列表
+- 输出 JSON 到 stdout，包含 `module`、`check`、`status`、`files`、`details` 字段
+- **不要**修改 `scripts/run_all.py` 和 `scripts/template.py`，它们是工具脚本
 
 ## 工具脚本
 
-- `scripts/explorer.py` — 快速查看 Excel 文件的 Sheet 列表和前 10 行示例数据
-- `scripts/run_all.py` — 批量执行检查脚本，按模块分组生成统一报告
-- `scripts/template.py` — 新检查脚本的模板，输出 JSON 格式结果
+以下脚本位于 `skills/e-checker-v2/scripts/` 目录，是技能的**内置工具**，**不要修改或重新创建**：
+
+- `explorer.py` — 快速查看 Excel 文件的 Sheet 列表和前 10 行示例数据
+- `run_all.py` — 批量执行检查脚本，解析 JSON 输出并按模块分组生成统一报告
+- `template.py` — 新检查脚本的模板，复制到 `.e-checker/` 后修改使用
+
+**复制模板的方式：**
+```bash
+cp skills/e-checker-v2/scripts/template.py .e-checker/check_<name>.py
+```
 
 ## 常见检查类型参考
 
